@@ -18,6 +18,8 @@ import '../modules/recommendation/bindings/recommendation_binding.dart';
 import '../modules/recommendation/views/recommendation_view.dart';
 import '../modules/register/bindings/register_binding.dart';
 import '../modules/register/views/register_view.dart';
+import '../modules/student_detail/bindings/student_detail_binding.dart';
+import '../modules/student_detail/views/student_detail_view.dart';
 import '../modules/student_list/bindings/student_list_binding.dart';
 import '../modules/student_list/views/student_list_view.dart';
 import '../modules/teacher_dashboard/bindings/teacher_dashboard_binding.dart';
@@ -92,6 +94,11 @@ class AppPages {
       name: _Paths.PROFILE,
       page: () => const ProfileView(),
       binding: ProfileBinding(),
+    ),
+    GetPage(
+      name: _Paths.STUDENT_DETAIL,
+      page: () => const StudentDetailView(),
+      binding: StudentDetailBinding(),
     ),
   ];
 }

@@ -15,6 +15,7 @@ abstract class Routes {
   static const DEVELOPMENT_HISTORY = _Paths.DEVELOPMENT_HISTORY;
   static const RECOMMENDATION = _Paths.RECOMMENDATION;
   static const PROFILE = _Paths.PROFILE;
+  static const STUDENT_DETAIL = _Paths.STUDENT_DETAIL;
 }
 
 abstract class _Paths {
@@ -31,4 +32,5 @@ abstract class _Paths {
   static const DEVELOPMENT_HISTORY = '/development-history';
   static const RECOMMENDATION = '/recommendation';
   static const PROFILE = '/profile';
+  static const STUDENT_DETAIL = '/student-detail';
 }
