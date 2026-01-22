@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:intl/intl.dart';
 import '../../../routes/app_pages.dart'; 
 import '../controllers/student_detail_controller.dart';
 
@@ -232,7 +231,7 @@ class StudentDetailView extends GetView<StudentDetailController> {
             child: OutlinedButton.icon(
               onPressed: () => _showAnalysisResultDialog(context, age, fineAvg, grossAvg),
               icon: const Icon(Icons.auto_awesome, size: 18, color: Colors.indigoAccent),
-              label: const Text("Analisa Kecerdasan Buatan", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.indigoAccent)),
+              label: const Text("Analisa Motorik", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.indigoAccent)),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -265,7 +264,7 @@ class StudentDetailView extends GetView<StudentDetailController> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Center(child: Text("Hasil Analisa Cepat", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87))),
+              const Center(child: Text("Hasil Analisa Motorik", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87))),
               const SizedBox(height: 24),
               const Text("Ringkasan", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
               const SizedBox(height: 8),
@@ -319,7 +318,7 @@ class StudentDetailView extends GetView<StudentDetailController> {
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       ),
-                      child: const Text("Minta Saran AI", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      child: const Text("Saran Motorik", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ],

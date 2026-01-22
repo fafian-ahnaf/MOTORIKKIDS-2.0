@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Wajib untuk SystemChrome
+import 'package:flutter/services.dart'; 
 import 'package:get/get.dart';
 import '../../../routes/app_pages.dart';
 import '../controllers/teacher_dashboard_controller.dart';
@@ -9,7 +9,6 @@ class TeacherDashboardView extends GetView<TeacherDashboardController> {
 
   @override
   Widget build(BuildContext context) {
-    // 1. KONFIGURASI NAVIGASI BAR HP JADI PUTIH
     SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
       systemNavigationBarColor: Colors.white,
       systemNavigationBarIconBrightness: Brightness.dark,
@@ -22,7 +21,7 @@ class TeacherDashboardView extends GetView<TeacherDashboardController> {
       body: SafeArea(
         child: Stack(
           children: [
-            // --- LAYER 1: KONTEN SCROLLABLE ---
+            // --- KONTEN SCROLLABLE ---
             SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(24, 20, 24, 100),
               child: Column(
@@ -30,40 +29,18 @@ class TeacherDashboardView extends GetView<TeacherDashboardController> {
                 children: [
                   _buildHeader(),
                   const SizedBox(height: 24),
-                  
-                  // Kartu Statistik Realtime
                   _buildHeroCard(),
-                  
                   const SizedBox(height: 30),
                   const Text(
-                    "Daftar Anak",
+                    "Daftar Anak Didik",
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
                   ),
                   const SizedBox(height: 16),
                   
-                  // LIST SISWA (REALTIME & PREMIUM)
+                  // LIST SISWA
                   Obx(() {
                     if (controller.studentsStream.isEmpty) {
-                      return Center(
-                        child: Padding(
-                          padding: const EdgeInsets.only(top: 50),
-                          child: Column(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(20),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue.shade50,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(Icons.person_search_rounded, size: 40, color: Colors.blue.shade300),
-                              ),
-                              const SizedBox(height: 16),
-                              Text("Belum ada data siswa", 
-                                style: TextStyle(color: Colors.grey.shade500, fontWeight: FontWeight.w500)),
-                            ],
-                          ),
-                        ),
-                      );
+                      return _buildEmptyState();
                     }
                     
                     return ListView.separated(
@@ -74,15 +51,9 @@ class TeacherDashboardView extends GetView<TeacherDashboardController> {
                       itemBuilder: (context, index) {
                         var data = controller.studentsStream[index];
                         
-                        // FIX: Pastikan ID diambil dari data firebase
-                        String docId = data['id'] ?? ""; 
-
                         return _buildStudentItem(
-                          id: docId, // Kirim ID ke widget
-                          name: data['name'] ?? "Tanpa Nama",
-                          age: data['age'] ?? "-",
-                          statusLabel: data['status'] ?? "Baik",
-                          statusColor: controller.getStatusColor(data['status']),
+                          data: data, // Kirim seluruh data map
+                          statusColor: controller.getStatusColor(data['status'] ?? "Baik"),
                         );
                       },
                     );
@@ -91,43 +62,30 @@ class TeacherDashboardView extends GetView<TeacherDashboardController> {
               ),
             ),
 
-            // --- LAYER 2: TOMBOL TAMBAH (STICKY BOTTOM) ---
+            // --- TOMBOL TAMBAH ---
             Positioned(
-              left: 24,
-              right: 24,
-              bottom: 24,
+              left: 24, right: 24, bottom: 24,
               child: Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFFA5D6A7).withOpacity(0.3),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
+                  boxShadow: [BoxShadow(color: const Color(0xFFA5D6A7).withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8))],
                 ),
                 child: SizedBox(
                   width: double.infinity,
                   height: 56,
                   child: ElevatedButton(
-                    onPressed: () => _showInputDialog(context),
+                    onPressed: () => _showInputDialog(context, isEdit: false),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFA5D6A7),
                       elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
-                      ),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: const [
                         Icon(Icons.add_rounded, color: Colors.white, size: 24),
                         SizedBox(width: 8),
-                        Text(
-                          "Tambah Catatan",
-                          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
+                        Text("Tambah Siswa", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ),
@@ -141,9 +99,17 @@ class TeacherDashboardView extends GetView<TeacherDashboardController> {
   }
 
   // ==========================================================
-  //      ✨ INPUT DIALOG CALENDAR & AUTO AGE (POP-UP) ✨
+  //      ✨ DIALOG INPUT (BISA EDIT & TAMBAH) ✨
   // ==========================================================
-  void _showInputDialog(BuildContext context) {
+  void _showInputDialog(BuildContext context, {required bool isEdit, String? docId, Map<String, dynamic>? dataLama}) {
+    // Jika Mode Tambah, Reset Form dulu
+    if (!isEdit) {
+      controller.resetForm();
+    } else if (dataLama != null) {
+      // Jika Mode Edit, Isi Form dengan data lama
+      controller.fillFormToEdit(dataLama);
+    }
+
     Get.dialog(
       Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
@@ -154,91 +120,79 @@ class TeacherDashboardView extends GetView<TeacherDashboardController> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              ),
-            ],
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, 10))],
           ),
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header Dialog
                 Center(
                   child: Container(
                     padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.green.shade50,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(Icons.edit_note_rounded, size: 32, color: Colors.green.shade400),
+                    decoration: BoxDecoration(color: isEdit ? Colors.orange.shade50 : Colors.green.shade50, shape: BoxShape.circle),
+                    child: Icon(isEdit ? Icons.edit_rounded : Icons.person_add_rounded, size: 32, color: isEdit ? Colors.orange : Colors.green.shade400),
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Center(
-                  child: Text("Catat Perkembangan", style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.black87)),
-                ),
+                Center(child: Text(isEdit ? "Edit Data Siswa" : "Data Siswa Baru", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.black87))),
                 const SizedBox(height: 24),
 
-                // 1. INPUT NAMA
-                const Text("Nama Lengkap", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                const SizedBox(height: 8),
+                // Form Nama
+                _buildLabel("Nama Lengkap"),
                 TextField(
                   controller: controller.nameC,
-                  decoration: InputDecoration(
-                    hintText: "Contoh: Budi Santoso",
-                    filled: true,
-                    fillColor: const Color(0xFFF5F6FA),
-                    prefixIcon: Icon(Icons.person_rounded, color: Colors.grey.shade400),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-                  ),
+                  decoration: _inputDecoration(Icons.person_rounded),
                 ),
                 const SizedBox(height: 16),
 
-                // 2. INPUT TANGGAL (KALENDER)
-                const Text("Tanggal Lahir & Umur", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                const SizedBox(height: 8),
+                // Form Kelas & Gender
                 Row(
                   children: [
-                    // A. Tombol Pilih Tanggal
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        _buildLabel("Kelas"),
+                        Obx(() => _buildDropdown(controller.selectedKelas, ["TK A", "TK B", "KB"])),
+                      ]),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        _buildLabel("Jenis Kelamin"),
+                        Obx(() => _buildDropdown(controller.selectedGender, ["Laki-laki", "Perempuan"])),
+                      ]),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Form Tanggal Lahir
+                _buildLabel("Tanggal Lahir"),
+                Row(
+                  children: [
                     Expanded(
                       flex: 3,
                       child: GestureDetector(
                         onTap: () => controller.pickDate(context),
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF5F6FA),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: Colors.transparent),
-                          ),
+                          decoration: BoxDecoration(color: const Color(0xFFF5F6FA), borderRadius: BorderRadius.circular(16)),
                           child: Row(
                             children: [
-                              Icon(Icons.calendar_month_rounded, color: Colors.grey.shade400, size: 20),
+                              Icon(Icons.calendar_today_rounded, color: Colors.grey.shade400, size: 18),
                               const SizedBox(width: 10),
-                              Obx(() {
-                                if (controller.selectedBirthDate.value == null) {
-                                  return Text("Pilih Tgl", style: TextStyle(color: Colors.grey.shade400));
-                                } else {
-                                  DateTime date = controller.selectedBirthDate.value!;
-                                  return Text(
-                                    "${date.day}/${date.month}/${date.year}",
-                                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
-                                  );
-                                }
-                              }),
+                              Obx(() => Text(
+                                controller.selectedBirthDate.value == null 
+                                  ? "Pilih Tanggal" 
+                                  : "${controller.selectedBirthDate.value!.day}/${controller.selectedBirthDate.value!.month}/${controller.selectedBirthDate.value!.year}",
+                                style: TextStyle(fontWeight: FontWeight.bold, color: controller.selectedBirthDate.value == null ? Colors.grey.shade400 : Colors.black87),
+                              )),
                             ],
                           ),
                         ),
                       ),
                     ),
                     const SizedBox(width: 12),
-                    
-                    // B. Badge Umur Otomatis
                     Expanded(
                       flex: 2,
                       child: Obx(() => Container(
@@ -250,24 +204,19 @@ class TeacherDashboardView extends GetView<TeacherDashboardController> {
                         child: Center(
                           child: Text(
                             controller.ageText.value.isEmpty ? "- Thn" : controller.ageText.value,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 13,
-                              color: controller.selectedBirthDate.value == null ? Colors.grey.shade400 : Colors.green.shade700,
-                            ),
+                            style: TextStyle(fontWeight: FontWeight.bold, color: controller.selectedBirthDate.value == null ? Colors.grey.shade400 : Colors.green.shade700),
                           ),
                         ),
                       )),
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
 
-                // 3. PILIHAN STATUS
-                const Text("Status Saat Ini", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                const SizedBox(height: 12),
+                // Form Status
+                _buildLabel("Status Awal"),
                 Obx(() => Wrap(
-                  spacing: 10, runSpacing: 10,
+                  spacing: 8, runSpacing: 8,
                   children: [
                     _buildModernChip("Baik", Colors.green, Icons.sentiment_very_satisfied_rounded),
                     _buildModernChip("Perlu Stimulasi", Colors.amber, Icons.sentiment_neutral_rounded),
@@ -276,35 +225,29 @@ class TeacherDashboardView extends GetView<TeacherDashboardController> {
                 )),
                 const SizedBox(height: 28),
 
-                // 4. TOMBOL AKSI
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 1,
-                      child: TextButton(
-                        onPressed: () => Get.back(),
-                        style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
-                        child: Text("Batal", style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
-                      ),
+                // Tombol Simpan/Update
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: Obx(() => ElevatedButton(
+                    onPressed: controller.isLoading.value ? null : () {
+                      if (isEdit && docId != null) {
+                        controller.updateStudent(docId);
+                      } else {
+                        controller.addStudent();
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isEdit ? Colors.orange : const Color(0xFFA5D6A7),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 2,
-                      child: Obx(() => ElevatedButton(
-                        onPressed: controller.isLoading.value ? null : () => controller.addStudent(),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFA5D6A7),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        ),
-                        child: controller.isLoading.value
-                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : const Text("Simpan Data", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                      )),
-                    ),
-                  ],
-                )
+                    child: controller.isLoading.value
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : Text(isEdit ? "Update Data" : "Simpan Data", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                  )),
+                ),
+                const SizedBox(height: 12),
+                Center(child: TextButton(onPressed: () => Get.back(), child: const Text("Batal", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)))),
               ],
             ),
           ),
@@ -314,176 +257,161 @@ class TeacherDashboardView extends GetView<TeacherDashboardController> {
     );
   }
 
+  // ==========================================================
+  //      ✨ KARTU SISWA (DENGAN EDIT & DELETE) ✨
+  // ==========================================================
+  Widget _buildStudentItem({
+    required Map<String, dynamic> data,
+    required Color statusColor,
+  }) {
+    String name = data['name'] ?? "Tanpa Nama";
+    String kelas = data['kelas'] ?? "TK A";
+    String gender = data['gender'] ?? "Laki-laki";
+    String age = data['age'] ?? "-";
+    String statusLabel = data['status'] ?? "Baik";
+    String id = data['id'];
+
+    bool isMale = gender == "Laki-laki";
+    IconData genderIcon = isMale ? Icons.male_rounded : Icons.female_rounded;
+    Color genderColor = isMale ? Colors.blue : Colors.pinkAccent;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, 5))],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          // Navigasi ke Detail
+          onTap: () {
+            Get.toNamed(
+              Routes.STUDENT_DETAIL, 
+              arguments: {
+                'id': id, 'name': name, 'age': age, 'gender': gender, 
+                'kelas': kelas, 'status': statusLabel, 'color': statusColor,
+              }
+            );
+          },
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                // Avatar
+                Container(
+                  width: 50, height: 50,
+                  decoration: BoxDecoration(color: statusColor.withOpacity(0.1), shape: BoxShape.circle),
+                  child: Center(child: Text(name.isNotEmpty ? name[0].toUpperCase() : "?", style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: statusColor))),
+                ),
+                const SizedBox(width: 16),
+                
+                // Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(4)),
+                            child: Text(kelas, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.shade700)),
+                          ),
+                          const SizedBox(width: 6),
+                          Text("$age • ", style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                          Icon(genderIcon, size: 14, color: genderColor),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // --- TOMBOL AKSI (EDIT & DELETE) ---
+                Row(
+                  children: [
+                    // Edit Button
+                    InkWell(
+                      onTap: () => _showInputDialog(Get.context!, isEdit: true, docId: id, dataLama: data),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        child: Icon(Icons.edit_rounded, size: 20, color: Colors.orange.shade300),
+                      ),
+                    ),
+                    // Delete Button
+                    InkWell(
+                      onTap: () => controller.deleteStudent(id),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        child: Icon(Icons.delete_rounded, size: 20, color: Colors.red.shade300),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --- Helper Widgets ---
+  Widget _buildDropdown(RxString value, List<String> items) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(color: const Color(0xFFF5F6FA), borderRadius: BorderRadius.circular(16)),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value.value,
+          isExpanded: true,
+          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.grey),
+          items: items.map((String val) => DropdownMenuItem(value: val, child: Text(val, style: const TextStyle(fontSize: 14)))).toList(),
+          onChanged: (val) => value.value = val!,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLabel(String text) {
+    return Padding(padding: const EdgeInsets.only(bottom: 6), child: Text(text, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.black87)));
+  }
+
+  InputDecoration _inputDecoration(IconData icon) {
+    return InputDecoration(
+      filled: true, fillColor: const Color(0xFFF5F6FA),
+      prefixIcon: Icon(icon, color: Colors.grey.shade400, size: 20),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+      contentPadding: const EdgeInsets.symmetric(vertical: 14),
+    );
+  }
+
   Widget _buildModernChip(String label, Color color, IconData icon) {
     bool isSelected = controller.selectedStatus.value == label;
     return GestureDetector(
       onTap: () => controller.selectedStatus.value = label,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected ? color.withOpacity(0.1) : Colors.white,
-          borderRadius: BorderRadius.circular(30),
-          border: Border.all(color: isSelected ? color : Colors.grey.shade200, width: 1.5),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: isSelected ? color : Colors.grey.shade300),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 18, color: isSelected ? color : Colors.grey),
+            Icon(icon, size: 16, color: isSelected ? color : Colors.grey),
             const SizedBox(width: 6),
-            Text(label, style: TextStyle(color: isSelected ? color : Colors.grey.shade600, fontWeight: isSelected ? FontWeight.bold : FontWeight.w500, fontSize: 12)),
+            Text(label, style: TextStyle(fontSize: 11, fontWeight: isSelected ? FontWeight.bold : FontWeight.w500, color: isSelected ? color : Colors.grey.shade600)),
           ],
         ),
-      ),
-    );
-  }
-
-  // ==========================================================
-  //      ✨ STUDENT CARD & NAVIGATION ✨
-  // ==========================================================
-  Widget _buildStudentItem({
-    required String id, // ID Wajib ada
-    required String name,
-    required String age,
-    required String statusLabel,
-    required Color statusColor,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.06),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-            spreadRadius: 2,
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(24),
-        child: InkWell(
-          // NAVIGASI KE DETAIL + KIRIM ID & DATA
-          onTap: () {
-            Get.toNamed(
-              Routes.STUDENT_DETAIL, 
-              arguments: {
-                'id': id, // Mengirim ID dokumen untuk update
-                'name': name,
-                'age': age,
-                'status': statusLabel,
-                'color': statusColor,
-              }
-            );
-          },
-          borderRadius: BorderRadius.circular(24),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                // Avatar Inisial
-                Container(
-                  width: 56, height: 56,
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: Text(
-                      name.isNotEmpty ? name[0].toUpperCase() : "?",
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: statusColor),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                
-                // Info Siswa
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87), maxLines: 1, overflow: TextOverflow.ellipsis),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Icon(Icons.cake_rounded, size: 14, color: Colors.grey.shade400),
-                          const SizedBox(width: 4),
-                          Text(age, style: TextStyle(fontSize: 12, color: Colors.grey.shade500, fontWeight: FontWeight.w500)),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: statusColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: statusColor.withOpacity(0.2)),
-                        ),
-                        child: Text(statusLabel, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: statusColor)),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                // Panah
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(12)),
-                  child: Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.grey.shade400),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // --- WIDGET LAINNYA ---
-  Widget _buildHeroCard() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.06), blurRadius: 20, offset: const Offset(0, 10))],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text("Catatan Minggu Ini", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    // Obx agar update realtime
-                    Obx(() => _buildStatItem("Total Anak", "${controller.totalSiswa.value}", Colors.blue.shade50, Colors.blue)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          Image.asset('assets/guru.png', height: 80, errorBuilder: (ctx, _, __) => const Icon(Icons.child_care, size: 60, color: Colors.orange)), 
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatItem(String label, String value, Color bg, Color text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(value, style: TextStyle(fontWeight: FontWeight.bold, color: text, fontSize: 16)),
-          const SizedBox(height: 2),
-          Text(label, style: TextStyle(fontSize: 10, color: text.withOpacity(0.8))),
-        ],
       ),
     );
   }
@@ -492,22 +420,38 @@ class TeacherDashboardView extends GetView<TeacherDashboardController> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text("Dashboard Guru", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 4),
-            Text("Monitoring Perkembangan Anak", style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-          ],
-        ),
-        Row(
-          children: [
-            Icon(Icons.notifications_none_rounded, color: Colors.green.shade300, size: 28),
-            const SizedBox(width: 12),
-            const CircleAvatar(radius: 18, backgroundColor: Colors.grey, backgroundImage: AssetImage('assets/guru.png')),
-          ],
-        )
+        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text("Selamat Datang,", style: TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.w500)),
+          const SizedBox(height: 4),
+          Obx(() => Text(controller.namaGuru.value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.black87), maxLines: 1, overflow: TextOverflow.ellipsis)),
+        ]),
+        const CircleAvatar(radius: 20, backgroundColor: Color(0xFFE8F5E9), backgroundImage: AssetImage('assets/guru.png')),
       ],
+    );
+  }
+
+  Widget _buildHeroCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.06), blurRadius: 20, offset: const Offset(0, 10))]),
+      child: Row(children: [
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text("Ringkasan Data", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 16),
+          Obx(() => Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(12)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text("${controller.totalSiswa.value}", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue, fontSize: 16)), const SizedBox(height: 2), Text("Total Anak", style: TextStyle(fontSize: 10, color: Colors.blue.withOpacity(0.8)))]))),
+        ])),
+        Image.asset('assets/guru.png', height: 80, errorBuilder: (c,o,s) => Icon(Icons.school, size: 60, color: Colors.orange.shade300)),
+      ]),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(padding: const EdgeInsets.only(top: 50), child: Column(children: [
+        Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: Colors.blue.shade50, shape: BoxShape.circle), child: Icon(Icons.person_search_rounded, size: 40, color: Colors.blue.shade300)),
+        const SizedBox(height: 16),
+        Text("Belum ada data siswa", style: TextStyle(color: Colors.grey.shade500, fontWeight: FontWeight.w500)),
+      ])),
     );
   }
 }

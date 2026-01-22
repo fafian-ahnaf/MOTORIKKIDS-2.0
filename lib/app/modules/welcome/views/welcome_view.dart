@@ -70,7 +70,7 @@ class WelcomeView extends GetView<WelcomeController> {
                     
                     // TYPOGRAPHY YANG LEBIH MODERN
                     const Text(
-                      "MotorikKids",
+                      "Motorik Kids",
                       style: TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.w800,
