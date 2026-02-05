@@ -3,7 +3,7 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 
 class AIService {
   // ⚠️ GANTI DENGAN API KEY KAMU DARI https://aistudio.google.com/
-  final String _apiKey = 'AIzaSyCIkkqyNmgiczwINoaAtKO9JpnjSGCAXj4'; 
+  final String _apiKey = 'AIzaSyDT4NEJgDsRGLbYqovdgRzsD4gasuS38xE'; 
 
   Future<Map<String, String>> getRecommendation({
     required String age, // Parameter bernama 'age'
