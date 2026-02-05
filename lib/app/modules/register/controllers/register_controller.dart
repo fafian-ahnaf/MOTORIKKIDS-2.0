@@ -13,6 +13,7 @@ class RegisterController extends GetxController {
   var isLoading = false.obs;
   var isObscure = true.obs;
   var isObscureConfirm = true.obs;
+  var gender = 'Laki-laki'.obs;
 
   // Text Controllers
   final nameC = TextEditingController();
@@ -59,8 +60,7 @@ class RegisterController extends GetxController {
         password: passC.text.trim(),
       );
 
-      // 3. Simpan Data Profil ke Firestore (Database)
-      // Kita pakai UID dari Auth sebagai nama dokumen agar mudah dicari
+      // 3. Simpan Data Profil ke Firestore
       String uid = userCredential.user!.uid;
 
       await _firestore.collection('users').doc(uid).set({
@@ -68,7 +68,11 @@ class RegisterController extends GetxController {
         'nama_lengkap': nameC.text,
         'email': emailC.text.trim(),
         'no_telp': phoneC.text,
-        'role': currentRole.value, // 'teacher' atau 'parent'
+        'role': currentRole.value,
+        
+        // --- TAMBAHAN: Simpan Gender ---
+        'jenis_kelamin': gender.value, 
+        
         'created_at': FieldValue.serverTimestamp(),
       });
 

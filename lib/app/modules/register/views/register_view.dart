@@ -102,6 +102,51 @@ class RegisterView extends GetView<RegisterController> {
                           ),
                           const SizedBox(height: 20),
 
+                          // JENIS KELAMIN (DROPDOWN)
+                          _buildLabel("Jenis Kelamin"),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF5F6FA), // Warna background sama dengan textfield
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.wc_rounded, color: Colors.grey.shade500), // Ikon Gender
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Obx(() => DropdownButtonHideUnderline(
+                                    child: DropdownButton<String>(
+                                      value: controller.gender.value,
+                                      icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.grey),
+                                      isExpanded: true,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w500, 
+                                        color: Colors.black87,
+                                        fontSize: 16,
+                                        fontFamily: 'Poppins' // Sesuaikan jika pakai font lain
+                                      ),
+                                      onChanged: (String? newValue) {
+                                        if (newValue != null) {
+                                          controller.gender.value = newValue;
+                                        }
+                                      },
+                                      items: <String>['Laki-laki', 'Perempuan']
+                                          .map<DropdownMenuItem<String>>((String value) {
+                                        return DropdownMenuItem<String>(
+                                          value: value,
+                                          child: Text(value),
+                                        );
+                                      }).toList(),
+                                    ),
+                                  )),
+                                ),
+                              ],
+                            ),
+                          ),
+                          
+                          const SizedBox(height: 20),
+
                           // PASSWORD
                           _buildLabel("Password"),
                           Obx(() => _buildTextField(
