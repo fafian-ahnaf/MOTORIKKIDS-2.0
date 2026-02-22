@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 class TeacherDashboardController extends GetxController {
-  // Instance Firebase
   FirebaseFirestore firestore = FirebaseFirestore.instance;
   FirebaseAuth auth = FirebaseAuth.instance;
 
@@ -13,17 +12,14 @@ class TeacherDashboardController extends GetxController {
   RxInt totalSiswa = 0.obs;
   RxBool isLoading = false.obs;
   
-  // Data Guru
+  // Data Profil Guru
   RxString namaGuru = "Guru".obs;
+  RxString panggilan = "".obs; // <--- INI YANG HILANG SEBELUMNYA
 
   // --- INPUT CONTROLLERS ---
   final nameC = TextEditingController();
-  
-  // Variabel Form
   Rx<DateTime?> selectedBirthDate = Rx<DateTime?>(null); 
   RxString ageText = "".obs; 
-  
-  // Pilihan Dropdown/Radio (Default Value)
   var selectedStatus = 'Baik'.obs;
   var selectedKelas = 'TK A'.obs;      
   var selectedGender = 'Laki-laki'.obs; 
@@ -33,119 +29,99 @@ class TeacherDashboardController extends GetxController {
     super.onInit();
     loadProfile();
     
-    // Bind Stream Data Siswa (Realtime)
-    studentsStream.bindStream(
-      firestore.collection('students')
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((query) {
-          totalSiswa.value = query.docs.length; 
-          List<Map<String, dynamic>> retVal = [];
-          for (var element in query.docs) {
-            var data = element.data();
-            data['id'] = element.id; 
-            retVal.add(data); 
-          }
-          return retVal;
-        }),
-    );
+    // Bind Stream Data Siswa (Hanya milik guru yang login)
+    User? user = auth.currentUser;
+    if (user != null) {
+      studentsStream.bindStream(
+        firestore.collection('students')
+          .where('teacherId', isEqualTo: user.uid)
+          .orderBy('createdAt', descending: true)
+          .snapshots()
+          .map((query) {
+            totalSiswa.value = query.docs.length; 
+            List<Map<String, dynamic>> retVal = [];
+            for (var element in query.docs) {
+              var data = element.data();
+              data['id'] = element.id; 
+              retVal.add(data); 
+            }
+            return retVal;
+          }),
+      );
+    }
   }
 
-  // --- FUNGSI LOAD PROFIL ---
+  // --- LOGIKA LOAD PROFIL ---
   void loadProfile() async {
     User? user = auth.currentUser;
     if (user != null) {
       try {
         var doc = await firestore.collection('users').doc(user.uid).get();
         if (doc.exists) {
-          String fetchedName = doc.data()?['nama_lengkap'] ?? "";
+          var data = doc.data();
+          // 1. Ambil Nama
+          String fetchedName = data?['nama_lengkap'] ?? "";
           if (fetchedName.isNotEmpty) {
             namaGuru.value = fetchedName;
-            return; 
+          }
+
+          // 2. Ambil Gender untuk Panggilan (Pak/Bu)
+          String gender = data?['jenis_kelamin'] ?? "";
+          if (gender == "Laki-laki") {
+            panggilan.value = "Pak";
+          } else if (gender == "Perempuan") {
+            panggilan.value = "Bu";
           }
         }
       } catch (e) {
         print("Error load profil: $e");
       }
-      if (user.displayName != null && user.displayName!.isNotEmpty) {
+      
+      // Fallback Nama jika DB gagal
+      if (namaGuru.value == "Guru" && user.displayName != null) {
         namaGuru.value = user.displayName!;
       }
     }
   }
 
-  // --- LOGIKA KALENDER ---
-  void pickDate(BuildContext context) async {
-    DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: selectedBirthDate.value ?? DateTime.now().subtract(const Duration(days: 365 * 5)), 
-      firstDate: DateTime(2010),
-      lastDate: DateTime.now(),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFFA5D6A7), 
-              onPrimary: Colors.white,
-              onSurface: Colors.black,
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-
-    if (picked != null) {
-      selectedBirthDate.value = picked;
-      calculateAge(picked);
-    }
+  // --- LOGIKA SALAM WAKTU (INI JUGA HILANG SEBELUMNYA) ---
+  String getSalam() {
+    var hour = DateTime.now().hour;
+    if (hour < 11) return "Selamat Pagi";
+    if (hour < 15) return "Selamat Siang";
+    if (hour < 18) return "Selamat Sore";
+    return "Selamat Malam";
   }
 
-  void calculateAge(DateTime birthDate) {
-    DateTime today = DateTime.now();
-    int years = today.year - birthDate.year;
-    int months = today.month - birthDate.month;
-
-    if (today.day < birthDate.day) {
-      months--;
-    }
-    if (months < 0) {
-      years--;
-      months += 12;
-    }
-
-    if (months > 0) {
-      ageText.value = "$years Thn $months Bln";
-    } else {
-      ageText.value = "$years Tahun";
-    }
+  // --- FUNGSI RESET & EDIT ---
+  void resetForm() {
+    nameC.clear();
+    selectedBirthDate.value = null;
+    ageText.value = "";
+    selectedStatus.value = 'Baik';
+    selectedKelas.value = 'TK A';
+    selectedGender.value = 'Laki-laki';
   }
 
-  // --- 🔥 LOGIKA EDIT: ISI FORM DENGAN DATA LAMA 🔥 ---
   void fillFormToEdit(Map<String, dynamic> data) {
     nameC.text = data['name'] ?? "";
     ageText.value = data['age'] ?? "";
     selectedStatus.value = data['status'] ?? "Baik";
     selectedKelas.value = data['kelas'] ?? "TK A";
     selectedGender.value = data['gender'] ?? "Laki-laki";
-    
-    // Parse Tanggal Lahir
     if (data['birthDate'] != null) {
-      try {
-        selectedBirthDate.value = DateTime.parse(data['birthDate']);
-      } catch (_) {
-        selectedBirthDate.value = null;
-      }
-    } else {
-      selectedBirthDate.value = null;
-    }
+      try { selectedBirthDate.value = DateTime.parse(data['birthDate']); } catch (_) { selectedBirthDate.value = null; }
+    } else { selectedBirthDate.value = null; }
   }
 
-  // --- 💾 FUNGSI SIMPAN (CREATE) ---
+  // --- CRUD (CREATE, UPDATE, DELETE) ---
   void addStudent() async {
     if (_validateForm()) {
       try {
         isLoading.value = true;
+        User? user = auth.currentUser;
         await firestore.collection('students').add({
+          'teacherId': user?.uid,
           'name': nameC.text,
           'age': ageText.value,
           'birthDate': selectedBirthDate.value?.toIso8601String(),
@@ -155,13 +131,10 @@ class TeacherDashboardController extends GetxController {
           'createdAt': DateTime.now().toIso8601String(),
         });
         _finishAction("Data siswa berhasil disimpan");
-      } catch (e) {
-        _handleError(e);
-      }
+      } catch (e) { _handleError(e); }
     }
   }
 
-  // --- ✏️ FUNGSI UPDATE (EDIT) ---
   void updateStudent(String docId) async {
     if (_validateForm()) {
       try {
@@ -173,67 +146,71 @@ class TeacherDashboardController extends GetxController {
           'status': selectedStatus.value,
           'kelas': selectedKelas.value,   
           'gender': selectedGender.value, 
-          // createdAt tidak diubah
         });
         _finishAction("Data siswa berhasil diperbarui");
-      } catch (e) {
-        _handleError(e);
-      }
+      } catch (e) { _handleError(e); }
     }
   }
 
-  // --- 🗑️ FUNGSI HAPUS (DELETE) ---
   void deleteStudent(String docId) {
     Get.defaultDialog(
       title: "Hapus Siswa",
-      middleText: "Apakah Anda yakin ingin menghapus data ini? Data tidak bisa dikembalikan.",
-      textConfirm: "Ya, Hapus",
-      textCancel: "Batal",
-      confirmTextColor: Colors.white,
-      buttonColor: Colors.red,
-      cancelTextColor: Colors.black,
+      middleText: "Yakin ingin menghapus data ini?",
+      textConfirm: "Hapus", textCancel: "Batal",
+      confirmTextColor: Colors.white, buttonColor: Colors.red,
       onConfirm: () async {
-        Get.back(); // Tutup Dialog
+        Get.back();
         try {
           await firestore.collection('students').doc(docId).delete();
-          Get.snackbar("Sukses", "Data siswa dihapus", backgroundColor: Colors.green, colorText: Colors.white);
-        } catch (e) {
-          Get.snackbar("Error", "Gagal menghapus: $e", backgroundColor: Colors.red);
-        }
+          Get.snackbar("Sukses", "Data dihapus", backgroundColor: Colors.green, colorText: Colors.white);
+        } catch (e) { Get.snackbar("Error", "$e", backgroundColor: Colors.red); }
       }
     );
   }
 
-  // --- HELPER FUNCTIONS ---
+  // --- HELPER LAINNYA ---
+  void pickDate(BuildContext context) async {
+    DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: selectedBirthDate.value ?? DateTime.now().subtract(const Duration(days: 365 * 5)), 
+      firstDate: DateTime(2010),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null) {
+      selectedBirthDate.value = picked;
+      _calculateAge(picked);
+    }
+  }
+
+  void _calculateAge(DateTime birthDate) {
+    DateTime today = DateTime.now();
+    int years = today.year - birthDate.year;
+    int months = today.month - birthDate.month;
+    if (today.day < birthDate.day) months--;
+    if (months < 0) { years--; months += 12; }
+    ageText.value = (months > 0) ? "$years Thn $months Bln" : "$years Tahun";
+  }
+
   bool _validateForm() {
     if (nameC.text.isEmpty || selectedBirthDate.value == null) {
-      Get.snackbar("Peringatan", "Nama dan Tanggal Lahir wajib diisi", backgroundColor: Colors.orange, colorText: Colors.white);
+      Get.snackbar("Info", "Nama & Tanggal Lahir wajib diisi", backgroundColor: Colors.orange, colorText: Colors.white);
       return false;
     }
     return true;
   }
 
-  void _finishAction(String successMessage) {
-    resetForm();
+  void _finishAction(String msg) {
     isLoading.value = false;
-    Get.back(); // Tutup Dialog Input
-    Get.snackbar("Sukses", successMessage, backgroundColor: Colors.green, colorText: Colors.white);
+    resetForm();
+    Get.back();
+    Get.snackbar("Sukses", msg, backgroundColor: Colors.green, colorText: Colors.white);
   }
 
   void _handleError(dynamic e) {
     isLoading.value = false;
-    Get.snackbar("Error", "Terjadi kesalahan: $e", backgroundColor: Colors.red);
+    Get.snackbar("Error", "$e", backgroundColor: Colors.red);
   }
 
-  void resetForm() {
-    nameC.clear();
-    selectedBirthDate.value = null;
-    ageText.value = "";
-    selectedStatus.value = 'Baik';
-    selectedKelas.value = 'TK A';
-    selectedGender.value = 'Laki-laki';
-  }
-  
   Color getStatusColor(String status) {
     if (status == 'Perlu Pendampingan') return Colors.red;
     if (status == 'Perlu Stimulasi') return Colors.amber;

@@ -2,18 +2,18 @@ import 'dart:convert';
 import 'package:google_generative_ai/google_generative_ai.dart';
 
 class AIService {
-  // ⚠️ GANTI DENGAN API KEY KAMU DARI https://aistudio.google.com/
-  final String _apiKey = 'AIzaSyDT4NEJgDsRGLbYqovdgRzsD4gasuS38xE'; 
+  // Pastikan API Key ini masih aktif dan tidak limit kuota
+  final String _apiKey = 'AIzaSyDtCNIo7Bj8fPS5nF_kncU4oXeBiD_XIHs'; 
 
   Future<Map<String, String>> getRecommendation({
-    required String age, // Parameter bernama 'age'
+    required String age,
     required double fineScore,
     required double grossScore,
   }) async {
     try {
+      // 💡 PERBAIKAN: Gunakan versi model yang valid
       final model = GenerativeModel(
-        // Gunakan model yang stabil dan kuota besar
-        model: 'gemini-2.5-flash', 
+        model: 'gemini-2.5-flash',
         apiKey: _apiKey,
       );
 
@@ -48,6 +48,11 @@ class AIService {
       final content = [Content.text(prompt)];
       final response = await model.generateContent(content);
       
+      // Pastikan response.text tidak null
+      if (response.text == null || response.text!.isEmpty) {
+        throw Exception("Response AI kosong");
+      }
+
       // Bersihkan format jika AI memberikan markdown
       String jsonText = response.text!
           .replaceAll('```json', '')
@@ -59,8 +64,11 @@ class AIService {
       return data.map((key, value) => MapEntry(key, value.toString()));
       
     } catch (e) {
-      print("Error AI: $e");
-      // Fallback jika error (Bahasa Formal)
+      // 💡 TIPS DEBUGGING: 
+      // Jika masih error, lihat tulisan merah di terminal/konsol VS Code Anda!
+      print("Error AI: $e"); 
+      
+      // Fallback jika error
       return {
         "title": "Stimulasi Gerak Dasar",
         "desc": "Mohon maaf, terjadi kendala koneksi pada sistem cerdas kami.",

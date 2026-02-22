@@ -11,6 +11,10 @@ class ParentDashboardController extends GetxController {
   var childName = "Belum ada data anak".obs;
   var className = "-".obs;
   var isLoading = true.obs;
+  var panggilan = "".obs;
+  
+  // --- TAMBAHAN: Simpan ID Siswa ---
+  var studentId = "".obs; 
 
   @override
   void onInit() {
@@ -20,25 +24,40 @@ class ParentDashboardController extends GetxController {
 
   void loadParentData() async {
     try {
-      String uid = _auth.currentUser!.uid;
+      User? user = _auth.currentUser;
+      if (user == null) return;
+      String uid = user.uid;
 
-      // 1. Ambil Nama Orang Tua
+      // 1. Ambil Data Orang Tua
       var userDoc = await _firestore.collection('users').doc(uid).get();
       if (userDoc.exists) {
-        parentName.value = userDoc.data()?['nama_lengkap'] ?? "Ayah/Bunda";
+        var data = userDoc.data();
+        parentName.value = data?['nama_lengkap'] ?? "Ayah/Bunda";
+        
+        String gender = data?['jenis_kelamin'] ?? "";
+        if (gender == "Laki-laki") panggilan.value = "Pak";
+        else if (gender == "Perempuan") panggilan.value = "Bu";
       }
 
-      // 2. Cari Anak yang parent_id nya sama dengan UID ini
+      // 2. Cari Anak (Sesuai parent_id)
       var anakQuery = await _firestore
           .collection('students')
           .where('parent_id', isEqualTo: uid)
-          .limit(1) // Ambil 1 anak dulu
+          .limit(1) 
           .get();
 
       if (anakQuery.docs.isNotEmpty) {
-        var anakData = anakQuery.docs.first.data();
-        childName.value = anakData['nama_siswa'];
-        className.value = anakData['kelas'];
+        var anakDoc = anakQuery.docs.first; // Ambil Dokumen
+        var anakData = anakDoc.data();
+        
+        childName.value = anakData['name'] ?? "Tanpa Nama"; 
+        className.value = anakData['kelas'] ?? "-";
+        
+        // --- SIMPAN ID SISWA DI SINI ---
+        studentId.value = anakDoc.id; 
+      } else {
+        childName.value = "Belum terhubung";
+        className.value = "-";
       }
     } catch (e) {
       print("Error loading parent data: $e");
@@ -47,8 +66,16 @@ class ParentDashboardController extends GetxController {
     }
   }
 
+  String getSalam() {
+    var hour = DateTime.now().hour;
+    if (hour < 11) return "Selamat Pagi";
+    if (hour < 15) return "Selamat Siang";
+    if (hour < 18) return "Selamat Sore";
+    return "Selamat Malam";
+  }
+
   void logout() async {
     await _auth.signOut();
-    Get.offAllNamed(Routes.WELCOME);
+    Get.offAllNamed(Routes.LOGIN);
   }
 }

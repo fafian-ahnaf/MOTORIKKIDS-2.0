@@ -33,9 +33,6 @@ class RecommendationView extends GetView<RecommendationController> {
           onPressed: () => Get.back(),
         ),
         title: const Text("Rekomendasi Aktivitas", style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 16)),
-        
-        // --- TAMBAHAN: TOMBOL REFRESH ---
-        
       ),
       
       body: Obx(() {
@@ -46,7 +43,7 @@ class RecommendationView extends GetView<RecommendationController> {
               children: const [
                 CircularProgressIndicator(color: Color(0xFFA5D6A7)),
                 SizedBox(height: 16),
-                Text("Sedang mencari ide baru...", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w500)),
+                Text("Memuat data...", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w500)),
               ],
             ),
           );
@@ -119,20 +116,21 @@ class RecommendationView extends GetView<RecommendationController> {
 
               const SizedBox(height: 40),
 
-              // 3. TOMBOL AKSI
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: () => controller.markAsDone(),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFA5D6A7),
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+              // 3. TOMBOL AKSI (Hanya Muncul Jika Role BUKAN Parent)
+              if (controller.role != 'parent') 
+                SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: ElevatedButton(
+                    onPressed: () => controller.markAsDone(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFA5D6A7),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                    ),
+                    child: const Text("Simpan ke Riwayat Siswa", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
-                  child: const Text("Tandai Selesai", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
-              ),
             ],
           ),
         );
