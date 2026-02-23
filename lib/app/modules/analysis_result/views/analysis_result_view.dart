@@ -1,157 +1,180 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import '../controllers/analysis_result_controller.dart';
 
-class AnalysisResultView extends StatelessWidget {
+class AnalysisResultView extends GetView<AnalysisResultController> {
   const AnalysisResultView({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Inisialisasi Controller
-    final controller = Get.put(AnalysisResultController());
-
-    // Mengatur warna status bar agar ikon terlihat jelas
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.dark,
-    ));
-
     return Scaffold(
-      backgroundColor: const Color(0xFFF9F9F9), // Background putih abu-abu muda
+      backgroundColor: const Color(0xFFF8F9FD),
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
+        title: const Text("Hasil Analisa AI", 
+          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
         centerTitle: true,
+        backgroundColor: Colors.white,
+        elevation: 0,
         leading: IconButton(
-          icon: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.grey.shade200),
-            ),
-            child: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Colors.black87),
-          ),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black87),
           onPressed: () => Get.back(),
         ),
-        title: const Text("Hasil Analisa", style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 18)),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          children: [
-            // --- CARD UTAMA HASIL ANALISA ---
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.08),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                  )
-                ],
+      body: Obx(() {
+        // TAMPILAN LOADING
+        if (controller.isLoading.value) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const CircularProgressIndicator(color: Color(0xFFA5D6A7)),
+                const SizedBox(height: 20),
+                Text("Model IndoBERT sedang menganalisa...", 
+                  style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w500)),
+              ],
+            ),
+          );
+        }
+
+        // TAMPILAN UTAMA SETELAH API SELESAI
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 1. CARD STATUS UTAMA
+              _buildMainStatusCard(),
+              
+              const SizedBox(height: 30),
+              const Text("Rekomendasi Aktivitas", 
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+
+              // 2. DETAIL REKOMENDASI
+              _buildRecommendationDetail(),
+
+              const SizedBox(height: 40),
+
+              // 3. TOMBOL AKSI
+              SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  onPressed: () => controller.saveAndFinish(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFA5D6A7),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 0,
+                  ),
+                  child: const Text("Simpan ke Riwayat", 
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Bagian 1: Ringkasan Otomatis
-                  const Text("Ringkasan Otomatis", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  const SizedBox(height: 8),
-                  Obx(() => Text(
-                    controller.nlpSummary.value,
-                    style: TextStyle(color: Colors.grey.shade600, height: 1.5, fontSize: 14),
-                  )),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Bagian 2: Klasifikasi
-                  const Text("Klasifikasi", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  const SizedBox(height: 8),
-                  Obx(() => Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildScoreRow("Motorik Kasar", "${controller.scoreKasar.value}%"),
-                      const SizedBox(height: 6),
-                      _buildScoreRow("Motorik Halus", "${controller.scoreHalus.value}%"),
-                    ],
-                  )),
+            ],
+          ),
+        );
+      }),
+    );
+  }
 
-                  const SizedBox(height: 24),
-
-                  // Bagian 3: Status
-                  const Text("Status", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  const SizedBox(height: 12),
-                  Obx(() => Row(
-                    children: [
-                      Container(
-                        width: 24,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          color: controller.statusColor.value, // Warna dinamis dari controller
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        controller.status.value,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87),
-                      ),
-                    ],
-                  )),
-                ],
+  Widget _buildMainStatusCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, 10))
+        ],
+      ),
+      child: Column(
+        children: [
+          const Text("Status Perkembangan", 
+            style: TextStyle(fontSize: 14, color: Colors.grey)),
+          const SizedBox(height: 12),
+          
+          // Label Status (BSB, BSH, dll)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+            decoration: BoxDecoration(
+              color: controller.statusColor.value.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: controller.statusColor.value.withOpacity(0.3)),
+            ),
+            child: Text(
+              controller.status.value,
+              style: TextStyle(
+                fontSize: 28, 
+                fontWeight: FontWeight.w900, 
+                color: controller.statusColor.value
               ),
             ),
-            
-            const Spacer(),
-
-            // --- TOMBOL AKSI DI BAWAH ---
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => controller.saveAndFinish(),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFA5D6A7), // Hijau Soft (sesuai tema umum)
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      elevation: 0,
-                    ),
-                    child: const Text("Simpan", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => controller.goToRecommendation(),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFA5D6A7), 
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      elevation: 0,
-                    ),
-                    child: const Text("Lihat Rekomendasi", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-                  ),
-                ),
-              ],
-            )
-          ],
-        ),
+          ),
+          
+          const SizedBox(height: 16),
+          Text(
+            "Tingkat Keyakinan AI: ${(controller.tingkatKeyakinan.value * 100).toStringAsFixed(1)}%",
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+          ),
+          const Divider(height: 40),
+          Text(
+            "\"${controller.inputTeks.value}\"",
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.black54),
+          ),
+        ],
       ),
     );
   }
 
-  // Widget Helper untuk Baris Skor
-  Widget _buildScoreRow(String label, String value) {
+  Widget _buildRecommendationDetail() {
+    var data = controller.recommendationData;
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey.shade100),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.lightbulb_outline, color: Colors.orange),
+              const SizedBox(width: 10),
+              Text(data['title'] ?? "-", 
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildInfoRow(Icons.flag_outlined, "Tujuan", data['goal'] ?? "-"),
+          const SizedBox(height: 12),
+          _buildInfoRow(Icons.task_alt, "Metode", data['method'] ?? "-"),
+          const SizedBox(height: 12),
+          _buildInfoRow(Icons.timer_outlined, "Durasi", data['duration'] ?? "-"),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(color: Colors.grey.shade500, fontSize: 14, fontWeight: FontWeight.w500)),
-        Text(value, style: TextStyle(color: Colors.grey.shade500, fontSize: 14, fontWeight: FontWeight.w500)),
+        Icon(icon, size: 18, color: Colors.grey),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 2),
+              Text(value, style: const TextStyle(fontSize: 14, color: Colors.black87)),
+            ],
+          ),
+        ),
       ],
     );
   }

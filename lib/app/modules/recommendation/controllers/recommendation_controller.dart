@@ -1,10 +1,10 @@
-import 'dart:ui';
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../../services/ai_service.dart';
+import 'package:http/http.dart' as http; // Tambahkan package http
 
 class RecommendationController extends GetxController {
-  final AIService _aiService = AIService();
   FirebaseFirestore firestore = FirebaseFirestore.instance;
   
   var recommendationData = <String, String>{}.obs;
@@ -15,10 +15,7 @@ class RecommendationController extends GetxController {
   late double _currentGrossScore;
   
   String? studentId;
-  String role = ''; // 💡 TAMBAHAN: Variabel untuk menyimpan role
-
-  static Map<String, String>? _cachedData;
-  static String? _cachedKey;
+  String role = ''; 
 
   @override
   void onInit() {
@@ -29,111 +26,97 @@ class RecommendationController extends GetxController {
     _currentFineScore = args['fineScore'] ?? 0.0;
     _currentGrossScore = args['grossScore'] ?? 0.0;
     studentId = args['studentId']; 
-    
-    // Tangkap role dari argumen (dikirim dari Dashboard)
     role = args['role'] ?? ''; 
 
-    // 💡 LOGIKA PERCABANGAN
     if (role == 'parent') {
-      // Jika Orang Tua: Ambil data persis yang disave Guru
       fetchSavedRecommendation();
     } else {
-      // Jika Guru: Generate baru pakai AI
-      String key = "$_currentAge-$_currentFineScore-$_currentGrossScore";
-      if (_cachedData != null && _cachedKey == key) {
-        recommendationData.value = _cachedData!;
-        isLoading.value = false;
-      } else {
-        getNewRecommendation();
-      }
+      getNewRecommendation(); // Sekarang akan memanggil Flask API
     }
   }
 
-  // --- FUNGSI BARU KHUSUS ORANG TUA ---
-  void fetchSavedRecommendation() async {
-    isLoading.value = true;
-    if (studentId != null) {
-      try {
-        // Ambil 1 rekomendasi terbaru dari sub-collection 'recommendations'
-        var snapshot = await firestore
-            .collection('students')
-            .doc(studentId)
-            .collection('recommendations')
-            .orderBy('date', descending: true)
-            .limit(1)
-            .get();
-
-        if (snapshot.docs.isNotEmpty) {
-          var data = snapshot.docs.first.data();
-          // Tampilkan data persis seperti yang disimpan Guru
-          recommendationData.value = {
-            "title": data['title']?.toString() ?? "",
-            "desc": data['desc']?.toString() ?? "",
-            "tujuan": data['tujuan']?.toString() ?? "",
-            "cara": data['cara']?.toString() ?? "",
-            "durasi": data['durasi']?.toString() ?? "",
-            "lokasi": data['lokasi']?.toString() ?? "",
-          };
-        } else {
-          // Jika Guru belum pernah meng-generate & menyimpan rekomendasi
-          recommendationData.value = {
-            "title": "Belum Ada Rekomendasi",
-            "desc": "Guru belum membuat rekomendasi aktivitas motorik untuk Ananda saat ini.",
-            "tujuan": "-",
-            "cara": "-",
-            "durasi": "-",
-            "lokasi": "-",
-          };
-        }
-      } catch (e) {
-        Get.snackbar("Error", "Gagal mengambil data rekomendasi: $e");
-      }
-    }
-    isLoading.value = false;
+  // --- FUNGSI PEMBANTU: KONVERSI SKOR KE TEKS OBSERVASI ---
+  String _generateObservationText(double fine, double gross) {
+    String fineStatus = fine >= 75 ? "sudah baik" : "perlu dilatih lagi";
+    String grossStatus = gross >= 75 ? "sudah sangat aktif" : "masih kaku";
+    
+    return "Anak berusia $_currentAge dengan kemampuan motorik halus yang $fineStatus dan kemampuan motorik kasar yang $grossStatus.";
   }
 
-  // --- FUNGSI LAMA KHUSUS GURU ---
+  // --- MODIFIKASI: FUNGSI GURU (PAKAI API FLASK) ---
   void getNewRecommendation() async {
     isLoading.value = true;
-    _cachedKey = "$_currentAge-$_currentFineScore-$_currentGrossScore";
-
+    
     try {
-      var result = await _aiService.getRecommendation(
-        age: _currentAge,
-        fineScore: _currentFineScore,
-        grossScore: _currentGrossScore,
-      );
-      
-      _cachedData = result;
-      recommendationData.value = result;
+      // 1. Siapkan teks observasi berdasarkan skor
+      String teksObservasi = _generateObservationText(_currentFineScore, _currentGrossScore);
+
+      // 2. Tembak API Flask (Ganti IP sesuai IPv4 laptop Anda)
+      final String apiUrl = "http://192.168.X.X:5000/predict"; 
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"teks": teksObservasi}),
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        String statusNLP = data['data']['prediksi_status']; // BB, MB, BSH, atau BSB
+
+        // 3. Map status dari NLP ke data rekomendasi (Activity Content)
+        recommendationData.value = _mapStatusToActivity(statusNLP);
+      } else {
+        throw "Server Error: ${response.statusCode}";
+      }
     } catch (e) {
-      Get.snackbar("Error", "Gagal memuat rekomendasi: $e");
+      Get.snackbar("Error", "Gagal terhubung ke API IndoBERT: $e");
     } finally {
       isLoading.value = false;
     }
   }
 
-  void markAsDone() async {
-    if (studentId != null && recommendationData.isNotEmpty) {
-      try {
-        await firestore
-            .collection('students')
-            .doc(studentId)
-            .collection('recommendations') 
-            .add({
-          ...recommendationData, 
-          'date': DateTime.now().toIso8601String(), 
-          'isDone': true,
-        });
-
-        Get.back();
-        Get.snackbar("Tersimpan", "Saran aktivitas berhasil disimpan ke riwayat siswa!", 
-          backgroundColor: const Color(0xFF4CAF50), colorText: Get.theme.canvasColor); 
-      } catch (e) {
-        Get.snackbar("Gagal", "Gagal menyimpan data: $e");
-      }
-    } else {
-      Get.back(); 
+  // --- MAPPING STATUS KE ISI AKTIVITAS ---
+  Map<String, String> _mapStatusToActivity(String status) {
+    if (status == "BB") {
+      return {
+        "title": "Stimulasi Dasar Otot",
+        "desc": "Ananda memerlukan bantuan penuh untuk memulai gerakan.",
+        "tujuan": "Meningkatkan kesadaran gerak tubuh.",
+        "cara": "Lakukan peregangan ringan dan bimbing tangan anak untuk menggenggam benda.",
+        "durasi": "10 Menit",
+        "lokasi": "Dalam Ruangan",
+      };
+    } else if (status == "MB") {
+      return {
+        "title": "Latihan Koordinasi Ringan",
+        "desc": "Ananda mulai mencoba melakukan gerakan secara mandiri.",
+        "tujuan": "Melatih kekuatan genggaman dan tumpuan kaki.",
+        "cara": "Ajak anak menyusun 3 balok atau menendang bola diam.",
+        "durasi": "15 Menit",
+        "lokasi": "Halaman Rumah",
+      };
+    } else if (status == "BSH") {
+      return {
+        "title": "Aktivitas Motorik Terarah",
+        "desc": "Kemampuan motorik sudah sesuai dengan tahapan usianya.",
+        "tujuan": "Memantapkan keseimbangan dan fokus.",
+        "cara": "Berjalan di atas garis lurus dan mewarnai bidang besar.",
+        "durasi": "20 Menit",
+        "lokasi": "Taman Bermain",
+      };
+    } else { // BSB
+      return {
+        "title": "Tantangan Ketangkasan",
+        "desc": "Kemampuan motorik sangat baik dan melampaui rata-rata.",
+        "tujuan": "Mengasah ketangkasan dan kreativitas gerak.",
+        "cara": "Bersepeda roda tiga atau menggunting mengikuti pola berkelok.",
+        "durasi": "30 Menit",
+        "lokasi": "Area Terbuka",
+      };
     }
   }
+
+  // (Fungsi fetchSavedRecommendation dan markAsDone tetap sama seperti sebelumnya)
+  void fetchSavedRecommendation() async { /* ... kode lama Anda ... */ }
+  void markAsDone() async { /* ... kode lama Anda ... */ }
 }

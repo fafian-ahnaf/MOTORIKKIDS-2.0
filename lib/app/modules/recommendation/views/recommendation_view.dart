@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import '../controllers/recommendation_controller.dart';
 
@@ -8,133 +7,131 @@ class RecommendationView extends GetView<RecommendationController> {
 
   @override
   Widget build(BuildContext context) {
-    // Inject Controller dengan tag agar aman (opsional, tapi Get.put biasa sudah cukup jika routing benar)
-    if (!Get.isRegistered<RecommendationController>()) {
-      Get.put(RecommendationController());
-    }
-
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.dark,
-    ));
-
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FD),
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
+        title: const Text("Saran Aktivitas", 
+          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
         centerTitle: true,
+        backgroundColor: Colors.white,
+        elevation: 0,
         leading: IconButton(
-          icon: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, border: Border.all(color: Colors.grey.shade200)),
-            child: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Colors.black87),
-          ),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black87),
           onPressed: () => Get.back(),
         ),
-        title: const Text("Rekomendasi Aktivitas", style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 16)),
       ),
-      
       body: Obx(() {
+        // 1. LOADING STATE
         if (controller.isLoading.value) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: const [
-                CircularProgressIndicator(color: Color(0xFFA5D6A7)),
-                SizedBox(height: 16),
-                Text("Memuat data...", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w500)),
-              ],
-            ),
+          return const Center(
+            child: CircularProgressIndicator(color: Color(0xFFA5D6A7)),
           );
         }
 
-        var data = controller.recommendationData;
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            children: [
-              // 1. HEADER KARTU
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [BoxShadow(color: Colors.blue.withOpacity(0.08), blurRadius: 20, offset: const Offset(0, 10))],
-                ),
-                child: Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(color: Colors.blue.shade50, shape: BoxShape.circle),
-                      child: Icon(Icons.auto_awesome, size: 40, color: Colors.blue.shade400),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      data['title'] ?? "Aktivitas",
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.black87),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      data['desc'] ?? "-",
-                      style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
+        final data = controller.recommendationData;
+
+        // 2. EMPTY STATE (Jika data gagal dimuat atau belum ada)
+        if (data.isEmpty || data['title'] == "Belum Ada Rekomendasi") {
+          return _buildEmptyState();
+        }
+
+        // 3. MAIN CONTENT
+        return Stack(
+          children: [
+            SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 100),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // CARD HEADER: Judul & Deskripsi Singkat
+                  _buildHeaderCard(data),
+
+                  const SizedBox(height: 24),
+                  const Text("Detail Panduan", 
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+                  const SizedBox(height: 16),
+
+                  // CARD DETAIL: Tujuan, Cara, Durasi, Lokasi
+                  _buildDetailCard(data),
+                ],
               ),
+            ),
 
-              const SizedBox(height: 24),
-
-              // 2. DETAIL INFORMASI
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, 5))],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildInfoRow(Icons.flag_rounded, Colors.red, "Tujuan", data['tujuan'] ?? "-"),
-                    const Divider(height: 32, thickness: 1, color: Color(0xFFF5F5F5)),
-                    _buildInfoRow(Icons.lightbulb_rounded, Colors.orange, "Cara Pelaksanaan", data['cara'] ?? "-"),
-                    const Divider(height: 32, thickness: 1, color: Color(0xFFF5F5F5)),
-                    Row(
-                      children: [
-                        Expanded(child: _buildInfoRow(Icons.timer_rounded, Colors.purple, "Durasi", data['durasi'] ?? "-")),
-                        const SizedBox(width: 16),
-                        Expanded(child: _buildInfoRow(Icons.place_rounded, Colors.green, "Lokasi", data['lokasi'] ?? "-")),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 40),
-
-              // 3. TOMBOL AKSI (Hanya Muncul Jika Role BUKAN Parent)
-              if (controller.role != 'parent') 
-                SizedBox(
-                  width: double.infinity,
+            // TOMBOL SIMPAN (Hanya muncul jika Role adalah Guru)
+            if (controller.role != 'parent')
+              Positioned(
+                left: 24, right: 24, bottom: 24,
+                child: SizedBox(
                   height: 56,
                   child: ElevatedButton(
                     onPressed: () => controller.markAsDone(),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFA5D6A7),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      elevation: 4,
+                      shadowColor: const Color(0xFFA5D6A7).withOpacity(0.4),
                     ),
-                    child: const Text("Simpan ke Riwayat Siswa", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                    child: const Text("Simpan ke Riwayat Siswa", 
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
                   ),
                 ),
-            ],
-          ),
+              ),
+          ],
         );
       }),
+    );
+  }
+
+  // --- WIDGET HELPER: HEADER ---
+  Widget _buildHeaderCard(Map<String, String> data) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, 10))],
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: Colors.orange.shade50, shape: BoxShape.circle),
+            child: const Icon(Icons.lightbulb_rounded, color: Colors.orange, size: 30),
+          ),
+          const SizedBox(height: 16),
+          Text(data['title'] ?? "-", 
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.black87)),
+          const SizedBox(height: 8),
+          Text(data['desc'] ?? "-", 
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade600, height: 1.5)),
+        ],
+      ),
+    );
+  }
+
+  // --- WIDGET HELPER: DETAIL ---
+  Widget _buildDetailCard(Map<String, String> data) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey.shade100),
+      ),
+      child: Column(
+        children: [
+          _buildInfoRow(Icons.track_changes_rounded, Colors.blue, "Tujuan Aktivitas", data['tujuan'] ?? "-"),
+          const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Divider()),
+          _buildInfoRow(Icons.ads_click_rounded, Colors.purple, "Cara Melakukan", data['cara'] ?? "-"),
+          const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Divider()),
+          _buildInfoRow(Icons.access_time_filled_rounded, Colors.green, "Durasi Rekomendasi", data['durasi'] ?? "-"),
+          const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Divider()),
+          _buildInfoRow(Icons.location_on_rounded, Colors.redAccent, "Lokasi Ideal", data['lokasi'] ?? "-"),
+        ],
+      ),
     );
   }
 
@@ -144,7 +141,7 @@ class RecommendationView extends GetView<RecommendationController> {
       children: [
         Container(
           padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+          decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
           child: Icon(icon, size: 20, color: color),
         ),
         const SizedBox(width: 16),
@@ -152,13 +149,34 @@ class RecommendationView extends GetView<RecommendationController> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87)),
+              Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey.shade500)),
               const SizedBox(height: 4),
-              Text(value, style: TextStyle(color: Colors.grey.shade600, fontSize: 14, height: 1.5)),
+              Text(value, style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.4)),
             ],
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.assignment_late_rounded, size: 80, color: Colors.grey.shade300),
+            const SizedBox(height: 20),
+            const Text("Belum Ada Saran", 
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black54)),
+            const SizedBox(height: 8),
+            const Text("Guru belum mengirimkan saran aktivitas motorik untuk periode ini.", 
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey)),
+          ],
+        ),
+      ),
     );
   }
 }
