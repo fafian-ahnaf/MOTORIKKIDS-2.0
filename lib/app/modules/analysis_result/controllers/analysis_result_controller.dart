@@ -36,7 +36,7 @@ class AnalysisResultController extends GetxController {
       isLoading.value = true;
 
 
-      final String apiUrl = "http://192.168.1.8:5000/predict"; 
+      final String apiUrl = "http://172.16.10.245:5000/predict"; 
       
       final response = await http.post(
         Uri.parse(apiUrl),

@@ -28,7 +28,6 @@ class RecommendationController extends GetxController {
     studentId = args['studentId']; 
     role = args['role'] ?? ''; 
 
-    
     if (role == 'parent') {
       fetchSavedRecommendation();
     } else {
@@ -36,7 +35,7 @@ class RecommendationController extends GetxController {
     }
   }
 
-  
+  // Teks observasi untuk dilempar ke API
   String _generateObservationText(double fine, double gross) {
     String fineStatus = fine >= 75 ? "sudah baik" : "perlu dilatih lagi";
     String grossStatus = gross >= 75 ? "sudah sangat aktif" : "masih kaku";
@@ -44,16 +43,13 @@ class RecommendationController extends GetxController {
     return "Anak berusia $_currentAge dengan kemampuan motorik halus yang $fineStatus dan kemampuan motorik kasar yang $grossStatus.";
   }
 
-  
   void getNewRecommendation() async {
     isLoading.value = true;
     
     try {
-      
       String teksObservasi = _generateObservationText(_currentFineScore, _currentGrossScore);
 
-      
-      final String apiUrl = "http://192.168.48.192:5000/predict"; 
+      final String apiUrl = "http://192.168.1.9:5000/predict"; 
       final response = await http.post(
         Uri.parse(apiUrl),
         headers: {"Content-Type": "application/json"},
@@ -62,11 +58,8 @@ class RecommendationController extends GetxController {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        
-
         String statusNLP = data['data']['prediksi_status'] ?? "BSH"; 
 
-        
         recommendationData.value = _mapStatusToActivity(statusNLP);
       } else {
         throw "Server Error: ${response.statusCode}";
@@ -79,49 +72,48 @@ class RecommendationController extends GetxController {
     }
   }
 
-  
+  // --- BAHASA REKOMENDASI YANG LEBIH PAUD FRIENDLY ---
   Map<String, String> _mapStatusToActivity(String status) {
     if (status == "BB") {
       return {
-        "title": "Stimulasi Dasar Otot",
-        "desc": "Ananda memerlukan bantuan penuh untuk memulai gerakan.",
-        "tujuan": "Meningkatkan kesadaran gerak tubuh.",
-        "cara": "Lakukan peregangan ringan dan bimbing tangan anak untuk menggenggam benda.",
+        "title": "Bermain Penuh Kasih Sayang 🧸",
+        "desc": "Ananda masih dalam tahap pengenalan gerak. Pendampingan penuh sangat diperlukan di tahap ini.",
+        "tujuan": "Membangun rasa percaya diri dan kesadaran gerak tubuh Ananda.",
+        "cara": "Sambil bernyanyi, pegang tangan Ananda dan bimbing perlahan untuk menggenggam benda atau merenggangkan otot.",
         "durasi": "10 Menit",
-        "lokasi": "Dalam Ruangan",
+        "lokasi": "Dalam Ruangan yang Nyaman",
       };
     } else if (status == "MB") {
       return {
-        "title": "Latihan Koordinasi Ringan",
-        "desc": "Ananda mulai mencoba melakukan gerakan secara mandiri.",
-        "tujuan": "Melatih kekuatan genggaman dan tumpuan kaki.",
-        "cara": "Ajak anak menyusun 3 balok atau menendang bola diam.",
+        "title": "Langkah Kecil Ceria! 🎈",
+        "desc": "Hebat! Ananda sudah mulai berani mencoba. Mari kita beri dorongan agar ia makin mandiri.",
+        "tujuan": "Melatih kekuatan genggaman dasar dan tumpuan kaki Ananda.",
+        "cara": "Ajak Ananda menyusun 3 buah balok warna-warni, atau berlatih menendang bola yang diam.",
         "durasi": "15 Menit",
-        "lokasi": "Halaman Rumah",
+        "lokasi": "Halaman Rumah / Kelas",
       };
     } else if (status == "BSH") {
       return {
-        "title": "Aktivitas Motorik Terarah",
-        "desc": "Kemampuan motorik sudah sesuai dengan tahapan usianya.",
-        "tujuan": "Memantapkan keseimbangan dan fokus.",
-        "cara": "Berjalan di atas garis lurus dan mewarnai bidang besar.",
+        "title": "Petualangan Si Aktif! 🚀",
+        "desc": "Keren! Kemampuan motorik Ananda sudah sangat sesuai dengan usianya. Waktunya bermain lebih seru!",
+        "tujuan": "Memantapkan keseimbangan, fokus, dan koordinasi mata-tangan.",
+        "cara": "Buat garis lurus di lantai untuk dititi Ananda, atau ajak mewarnai gambar berukuran besar bersama.",
         "durasi": "20 Menit",
-        "lokasi": "Taman Bermain",
+        "lokasi": "Taman Bermain / Luar Ruangan",
       };
     } else { 
-      
+      // BSB
       return {
-        "title": "Tantangan Ketangkasan",
-        "desc": "Kemampuan motorik sangat baik dan melampaui rata-rata.",
-        "tujuan": "Mengasah ketangkasan dan kreativitas gerak.",
-        "cara": "Bersepeda roda tiga atau menggunting mengikuti pola berkelok.",
+        "title": "Tantangan Bintang Cilik! 🌟",
+        "desc": "Luar biasa! Motorik Ananda berkembang sangat pesat dan melampaui rata-rata. Ia butuh permainan yang menantang.",
+        "tujuan": "Mengasah ketangkasan tingkat lanjut dan kreativitas gerakan mandiri.",
+        "cara": "Bersepeda roda tiga menghindari rintangan, atau menggunting kertas dengan pola garis berkelok/zig-zag.",
         "durasi": "30 Menit",
-        "lokasi": "Area Terbuka",
+        "lokasi": "Area Terbuka / Lapangan Luas",
       };
     }
   }
 
-  
   void fetchSavedRecommendation() async {
     isLoading.value = true;
     if (studentId != null) {
@@ -146,8 +138,8 @@ class RecommendationController extends GetxController {
           };
         } else {
           recommendationData.value = {
-            "title": "Belum Ada Rekomendasi",
-            "desc": "Guru belum membuat rekomendasi aktivitas motorik untuk Ananda saat ini.",
+            "title": "Belum Ada Saran Bermain 🍃",
+            "desc": "Guru belum membuat rekomendasi aktivitas motorik untuk Ananda saat ini. Coba kembali lagi nanti ya!",
             "tujuan": "-",
             "cara": "-",
             "durasi": "-",
@@ -155,13 +147,12 @@ class RecommendationController extends GetxController {
           };
         }
       } catch (e) {
-        Get.snackbar("Error", "Gagal mengambil data rekomendasi: $e");
+        Get.snackbar("Error", "Gagal mengambil data saran: $e");
       }
     }
     isLoading.value = false;
   }
 
-  
   void markAsDone() async {
     if (studentId != null && recommendationData.isNotEmpty) {
       try {
@@ -176,10 +167,15 @@ class RecommendationController extends GetxController {
         });
 
         Get.back();
-        Get.snackbar("Tersimpan", "Saran aktivitas berhasil disimpan ke riwayat siswa!", 
-          backgroundColor: const Color(0xFF4CAF50), colorText: Colors.white); 
+        Get.snackbar(
+          "Hebat! 🎉", 
+          "Saran aktivitas berhasil disimpan ke jurnal Ananda!", 
+          backgroundColor: Colors.green.shade400, 
+          colorText: Colors.white,
+          snackPosition: SnackPosition.TOP
+        ); 
       } catch (e) {
-        Get.snackbar("Gagal", "Gagal menyimpan data: $e");
+        Get.snackbar("Gagal", "Yaaah, gagal menyimpan data: $e");
       }
     } else {
       Get.back(); 

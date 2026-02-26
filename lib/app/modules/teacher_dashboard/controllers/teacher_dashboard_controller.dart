@@ -7,16 +7,13 @@ class TeacherDashboardController extends GetxController {
   FirebaseFirestore firestore = FirebaseFirestore.instance;
   FirebaseAuth auth = FirebaseAuth.instance;
 
-  
   RxList<Map<String, dynamic>> studentsStream = <Map<String, dynamic>>[].obs;
   RxInt totalSiswa = 0.obs;
   RxBool isLoading = false.obs;
   
-  
   RxString namaGuru = "Guru".obs;
   RxString panggilan = "".obs; 
 
-  
   final nameC = TextEditingController();
   Rx<DateTime?> selectedBirthDate = Rx<DateTime?>(null); 
   RxString ageText = "".obs; 
@@ -28,7 +25,6 @@ class TeacherDashboardController extends GetxController {
   void onInit() {
     super.onInit();
     loadProfile();
-    
     
     User? user = auth.currentUser;
     if (user != null) {
@@ -51,7 +47,6 @@ class TeacherDashboardController extends GetxController {
     }
   }
 
-  
   void loadProfile() async {
     User? user = auth.currentUser;
     if (user != null) {
@@ -66,17 +61,19 @@ class TeacherDashboardController extends GetxController {
           }
 
           
-          String gender = data?['jenis_kelamin'] ?? "";
-          if (gender == "Laki-laki") {
+          String gender = data?['jenis_kelamin']?.toString() ?? "";
+          if (gender.toLowerCase() == "laki-laki") {
             panggilan.value = "Pak";
-          } else if (gender == "Perempuan") {
+          } else if (gender.toLowerCase() == "perempuan") {
             panggilan.value = "Bu";
+          } else {
+            
+            panggilan.value = "Pak/Bu"; 
           }
         }
       } catch (e) {
         print("Error load profil: $e");
       }
-      
       
       if (namaGuru.value == "Guru" && user.displayName != null) {
         namaGuru.value = user.displayName!;
@@ -84,7 +81,6 @@ class TeacherDashboardController extends GetxController {
     }
   }
 
-  
   String getSalam() {
     var hour = DateTime.now().hour;
     if (hour < 11) return "Selamat Pagi";
@@ -93,7 +89,6 @@ class TeacherDashboardController extends GetxController {
     return "Selamat Malam";
   }
 
-  
   void resetForm() {
     nameC.clear();
     selectedBirthDate.value = null;
@@ -114,7 +109,6 @@ class TeacherDashboardController extends GetxController {
     } else { selectedBirthDate.value = null; }
   }
 
-  
   void addStudent() async {
     if (_validateForm()) {
       try {
@@ -168,7 +162,6 @@ class TeacherDashboardController extends GetxController {
     );
   }
 
-  
   void pickDate(BuildContext context) async {
     DateTime? picked = await showDatePicker(
       context: context,
