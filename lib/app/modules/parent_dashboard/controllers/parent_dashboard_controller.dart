@@ -13,7 +13,7 @@ class ParentDashboardController extends GetxController {
   var isLoading = true.obs;
   var panggilan = "".obs;
   
-  // --- TAMBAHAN: Simpan ID Siswa ---
+  
   var studentId = "".obs; 
 
   @override
@@ -28,7 +28,7 @@ class ParentDashboardController extends GetxController {
       if (user == null) return;
       String uid = user.uid;
 
-      // 1. Ambil Data Orang Tua
+      
       var userDoc = await _firestore.collection('users').doc(uid).get();
       if (userDoc.exists) {
         var data = userDoc.data();
@@ -39,7 +39,7 @@ class ParentDashboardController extends GetxController {
         else if (gender == "Perempuan") panggilan.value = "Bu";
       }
 
-      // 2. Cari Anak (Sesuai parent_id)
+      
       var anakQuery = await _firestore
           .collection('students')
           .where('parent_id', isEqualTo: uid)
@@ -47,13 +47,13 @@ class ParentDashboardController extends GetxController {
           .get();
 
       if (anakQuery.docs.isNotEmpty) {
-        var anakDoc = anakQuery.docs.first; // Ambil Dokumen
+        var anakDoc = anakQuery.docs.first; 
         var anakData = anakDoc.data();
         
         childName.value = anakData['name'] ?? "Tanpa Nama"; 
         className.value = anakData['kelas'] ?? "-";
         
-        // --- SIMPAN ID SISWA DI SINI ---
+        
         studentId.value = anakDoc.id; 
       } else {
         childName.value = "Belum terhubung";

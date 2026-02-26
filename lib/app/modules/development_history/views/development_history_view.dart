@@ -54,14 +54,14 @@ class DevelopmentHistoryView extends GetView<DevelopmentHistoryController> {
   }
 
   Widget _buildHistoryItem(Map<String, dynamic> data) {
-    // Sesuaikan dengan nama field di database Anda
+    
     String activity = data['activity'] ?? "Kegiatan Motorik";
     String score = data['score']?.toString() ?? "0";
     String notes = (data['notes'] == null || data['notes'] == "") 
         ? "Tidak ada catatan tambahan." 
         : data['notes'];
     
-    // Format tanggal dari string ISO di database
+    
     String dateStr = "Tanpa Tanggal";
     if (data['date'] != null) {
       DateTime dt = DateTime.parse(data['date']);

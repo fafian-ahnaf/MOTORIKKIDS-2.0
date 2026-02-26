@@ -9,7 +9,7 @@ class ParentDashboardView extends GetView<ParentDashboardController> {
 
   @override
   Widget build(BuildContext context) {
-    // Config Status Bar agar ikon terlihat jelas
+    
     SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
       systemNavigationBarColor: Colors.white,
       systemNavigationBarIconBrightness: Brightness.dark,
@@ -25,7 +25,7 @@ class ParentDashboardView extends GetView<ParentDashboardController> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. HEADER (Sapaan & Profil)
+              
               _buildHeader(),
               
               const SizedBox(height: 30),
@@ -36,19 +36,19 @@ class ParentDashboardView extends GetView<ParentDashboardController> {
               ),
               const SizedBox(height: 16),
 
-              // 2. KARTU ANAK (Data dari Controller)
+              
               _buildChildCard(),
               
               const SizedBox(height: 30),
 
-              // 3. MENU UTAMA
+              
               const Text(
                 "Menu Orang Tua",
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
               ),
               const SizedBox(height: 16),
               
-              // Tombol Lihat Riwayat (Kirim studentId)
+              
               _buildMenuTile(
                 "Lihat Riwayat", 
                 "Cek hasil observasi guru", 
@@ -68,7 +68,7 @@ class ParentDashboardView extends GetView<ParentDashboardController> {
               
               const SizedBox(height: 16),
               
-              // Tombol Rekomendasi (SUDAH DIPERBARUI)
+              
               _buildMenuTile(
                 "Rekomendasi Aktivitas", 
                 "Lihat saran aktivitas dari guru", 
@@ -80,7 +80,7 @@ class ParentDashboardView extends GetView<ParentDashboardController> {
                       Routes.RECOMMENDATION,
                       arguments: {
                         'studentId': controller.studentId.value,
-                        'role': 'parent', // 💡 INI KUNCI UTAMANYA: Beri tahu controller bahwa ini Orang Tua
+                        'role': 'parent', 
                         'age': '5 Tahun', 
                         'fineScore': 0.0, 
                         'grossScore': 0.0, 
@@ -98,25 +98,25 @@ class ParentDashboardView extends GetView<ParentDashboardController> {
     );
   }
 
-  // --- WIDGET HEADER ---
+  
   Widget _buildHeader() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // Baris 1: Assalamualaikum + Waktu (Pagi/Siang/Sore)
+          
           Text(
             "Assalamualaikum, ${controller.getSalam()}", 
             style: const TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w500)
           ),
           const SizedBox(height: 4),
           
-          // Baris 2: Pak/Bu + Nama
+          
           Obx(() {
             String fullName = controller.parentName.value;
-            String call = controller.panggilan.value; // Pak/Bu
+            String call = controller.panggilan.value; 
             
-            // Cek agar tidak double (misal nama sudah ada "Pak")
+            
             String displayName = fullName;
             if (call.isNotEmpty && !fullName.toLowerCase().startsWith(call.toLowerCase())) {
               displayName = "$call $fullName";
@@ -131,7 +131,7 @@ class ParentDashboardView extends GetView<ParentDashboardController> {
           }),
         ]),
         
-        // Foto Profil (Klik ke Halaman Profile)
+        
         GestureDetector(
           onTap: () => Get.toNamed(Routes.PROFILE),
           child: Container(
@@ -142,8 +142,8 @@ class ParentDashboardView extends GetView<ParentDashboardController> {
             ),
             child: const CircleAvatar(
               radius: 20, 
-              backgroundColor: Color(0xFFE3F2FD), // Biru Muda
-              backgroundImage: AssetImage('assets/orang tua.png') // Pastikan aset ini ada
+              backgroundColor: Color(0xFFE3F2FD), 
+              backgroundImage: AssetImage('assets/orang tua.png') 
             ),
           ),
         ),
@@ -151,13 +151,13 @@ class ParentDashboardView extends GetView<ParentDashboardController> {
     );
   }
 
-  // --- WIDGET KARTU ANAK ---
+  
   Widget _buildChildCard() {
     return Obx(() => Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF42A5F5), Color(0xFF2196F3)], // Biru Material
+          colors: [Color(0xFF42A5F5), Color(0xFF2196F3)], 
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -209,7 +209,7 @@ class ParentDashboardView extends GetView<ParentDashboardController> {
     ));
   }
 
-  // --- WIDGET MENU TILE ---
+  
   Widget _buildMenuTile(String title, String subtitle, IconData icon, Color color, VoidCallback onTap) {
     return Container(
       decoration: BoxDecoration(

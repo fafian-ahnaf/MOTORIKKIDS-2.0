@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:http/http.dart' as http; // Tambahkan package http
+import 'package:http/http.dart' as http; 
 
 class RecommendationController extends GetxController {
   FirebaseFirestore firestore = FirebaseFirestore.instance;
@@ -28,14 +28,15 @@ class RecommendationController extends GetxController {
     studentId = args['studentId']; 
     role = args['role'] ?? ''; 
 
+    
     if (role == 'parent') {
       fetchSavedRecommendation();
     } else {
-      getNewRecommendation(); // Sekarang akan memanggil Flask API
+      getNewRecommendation(); 
     }
   }
 
-  // --- FUNGSI PEMBANTU: KONVERSI SKOR KE TEKS OBSERVASI ---
+  
   String _generateObservationText(double fine, double gross) {
     String fineStatus = fine >= 75 ? "sudah baik" : "perlu dilatih lagi";
     String grossStatus = gross >= 75 ? "sudah sangat aktif" : "masih kaku";
@@ -43,16 +44,16 @@ class RecommendationController extends GetxController {
     return "Anak berusia $_currentAge dengan kemampuan motorik halus yang $fineStatus dan kemampuan motorik kasar yang $grossStatus.";
   }
 
-  // --- MODIFIKASI: FUNGSI GURU (PAKAI API FLASK) ---
+  
   void getNewRecommendation() async {
     isLoading.value = true;
     
     try {
-      // 1. Siapkan teks observasi berdasarkan skor
+      
       String teksObservasi = _generateObservationText(_currentFineScore, _currentGrossScore);
 
-      // 2. Tembak API Flask (Ganti IP sesuai IPv4 laptop Anda)
-      final String apiUrl = "http://192.168.X.X:5000/predict"; 
+      
+      final String apiUrl = "http://192.168.48.192:5000/predict"; 
       final response = await http.post(
         Uri.parse(apiUrl),
         headers: {"Content-Type": "application/json"},
@@ -61,21 +62,24 @@ class RecommendationController extends GetxController {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        String statusNLP = data['data']['prediksi_status']; // BB, MB, BSH, atau BSB
+        
 
-        // 3. Map status dari NLP ke data rekomendasi (Activity Content)
+        String statusNLP = data['data']['prediksi_status'] ?? "BSH"; 
+
+        
         recommendationData.value = _mapStatusToActivity(statusNLP);
       } else {
         throw "Server Error: ${response.statusCode}";
       }
     } catch (e) {
-      Get.snackbar("Error", "Gagal terhubung ke API IndoBERT: $e");
+      Get.snackbar("Kendala Koneksi", "Gagal terhubung ke API IndoBERT: $e", 
+        backgroundColor: Colors.red.shade100);
     } finally {
       isLoading.value = false;
     }
   }
 
-  // --- MAPPING STATUS KE ISI AKTIVITAS ---
+  
   Map<String, String> _mapStatusToActivity(String status) {
     if (status == "BB") {
       return {
@@ -104,7 +108,8 @@ class RecommendationController extends GetxController {
         "durasi": "20 Menit",
         "lokasi": "Taman Bermain",
       };
-    } else { // BSB
+    } else { 
+      
       return {
         "title": "Tantangan Ketangkasan",
         "desc": "Kemampuan motorik sangat baik dan melampaui rata-rata.",
@@ -116,7 +121,68 @@ class RecommendationController extends GetxController {
     }
   }
 
-  // (Fungsi fetchSavedRecommendation dan markAsDone tetap sama seperti sebelumnya)
-  void fetchSavedRecommendation() async { /* ... kode lama Anda ... */ }
-  void markAsDone() async { /* ... kode lama Anda ... */ }
+  
+  void fetchSavedRecommendation() async {
+    isLoading.value = true;
+    if (studentId != null) {
+      try {
+        var snapshot = await firestore
+            .collection('students')
+            .doc(studentId)
+            .collection('recommendations')
+            .orderBy('date', descending: true)
+            .limit(1)
+            .get();
+
+        if (snapshot.docs.isNotEmpty) {
+          var data = snapshot.docs.first.data();
+          recommendationData.value = {
+            "title": data['title']?.toString() ?? "",
+            "desc": data['desc']?.toString() ?? "",
+            "tujuan": data['tujuan']?.toString() ?? "",
+            "cara": data['cara']?.toString() ?? "",
+            "durasi": data['durasi']?.toString() ?? "",
+            "lokasi": data['lokasi']?.toString() ?? "",
+          };
+        } else {
+          recommendationData.value = {
+            "title": "Belum Ada Rekomendasi",
+            "desc": "Guru belum membuat rekomendasi aktivitas motorik untuk Ananda saat ini.",
+            "tujuan": "-",
+            "cara": "-",
+            "durasi": "-",
+            "lokasi": "-",
+          };
+        }
+      } catch (e) {
+        Get.snackbar("Error", "Gagal mengambil data rekomendasi: $e");
+      }
+    }
+    isLoading.value = false;
+  }
+
+  
+  void markAsDone() async {
+    if (studentId != null && recommendationData.isNotEmpty) {
+      try {
+        await firestore
+            .collection('students')
+            .doc(studentId)
+            .collection('recommendations') 
+            .add({
+          ...recommendationData, 
+          'date': DateTime.now().toIso8601String(), 
+          'isDone': true,
+        });
+
+        Get.back();
+        Get.snackbar("Tersimpan", "Saran aktivitas berhasil disimpan ke riwayat siswa!", 
+          backgroundColor: const Color(0xFF4CAF50), colorText: Colors.white); 
+      } catch (e) {
+        Get.snackbar("Gagal", "Gagal menyimpan data: $e");
+      }
+    } else {
+      Get.back(); 
+    }
+  }
 }

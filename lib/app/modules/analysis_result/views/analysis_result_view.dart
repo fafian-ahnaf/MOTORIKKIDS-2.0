@@ -21,7 +21,7 @@ class AnalysisResultView extends GetView<AnalysisResultController> {
         ),
       ),
       body: Obx(() {
-        // TAMPILAN LOADING
+        
         if (controller.isLoading.value) {
           return Center(
             child: Column(
@@ -36,13 +36,13 @@ class AnalysisResultView extends GetView<AnalysisResultController> {
           );
         }
 
-        // TAMPILAN UTAMA SETELAH API SELESAI
+        
         return SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. CARD STATUS UTAMA
+              
               _buildMainStatusCard(),
               
               const SizedBox(height: 30),
@@ -50,12 +50,12 @@ class AnalysisResultView extends GetView<AnalysisResultController> {
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
 
-              // 2. DETAIL REKOMENDASI
+              
               _buildRecommendationDetail(),
 
               const SizedBox(height: 40),
 
-              // 3. TOMBOL AKSI
+              
               SizedBox(
                 width: double.infinity,
                 height: 55,
@@ -94,7 +94,7 @@ class AnalysisResultView extends GetView<AnalysisResultController> {
             style: TextStyle(fontSize: 14, color: Colors.grey)),
           const SizedBox(height: 12),
           
-          // Label Status (BSB, BSH, dll)
+          
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
             decoration: BoxDecoration(

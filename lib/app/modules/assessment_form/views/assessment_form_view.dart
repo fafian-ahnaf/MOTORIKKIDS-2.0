@@ -14,7 +14,7 @@ class AssessmentFormView extends GetView<AssessmentFormController> {
         child: Column(
           children: [
             TextField(
-              controller: controller.teksObservasi, // Sambungkan ke controller GetX
+              controller: controller.teksObservasi, 
               maxLines: 4,
               decoration: InputDecoration(
                 hintText: "Ketik catatan observasi anak di sini...",
@@ -23,7 +23,7 @@ class AssessmentFormView extends GetView<AssessmentFormController> {
             ),
             const SizedBox(height: 20),
             
-            // Bungkus dengan Obx agar berubah sesuai state
+            
             Obx(() => ElevatedButton(
               onPressed: controller.isLoading.value ? null : () => controller.analisisData(),
               child: controller.isLoading.value 
@@ -33,7 +33,7 @@ class AssessmentFormView extends GetView<AssessmentFormController> {
 
             const SizedBox(height: 30),
 
-            // Tampilkan hasil hanya jika sudah ada prediksinya
+            
             Obx(() {
               if (controller.hasilPrediksi.value.isNotEmpty) {
                 return Card(
@@ -53,7 +53,7 @@ class AssessmentFormView extends GetView<AssessmentFormController> {
                   ),
                 );
               }
-              return const SizedBox.shrink(); // Jika kosong, tidak tampil apa-apa
+              return const SizedBox.shrink(); 
             })
           ],
         ),

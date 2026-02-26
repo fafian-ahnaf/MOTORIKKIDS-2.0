@@ -8,14 +8,14 @@ class WelcomeView extends GetView<WelcomeController> {
 
   @override
   Widget build(BuildContext context) {
-    // Kita pakai MediaQuery biar responsif di HP kecil/besar
+    
     final size = MediaQuery.of(context).size;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F9FD), // Putih kebiruan dikit biar gak sakit mata
+      backgroundColor: const Color(0xFFF5F9FD), 
       body: Stack(
         children: [
-          // 1. BACKGROUND DECORATION (Biar gak sepi)
+          
           Positioned(
             top: -50,
             left: -50,
@@ -41,7 +41,7 @@ class WelcomeView extends GetView<WelcomeController> {
             ),
           ),
 
-          // 2. MAIN CONTENT
+          
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
@@ -49,7 +49,7 @@ class WelcomeView extends GetView<WelcomeController> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // LOGO DENGAN EFEK SHADOW
+                    
                     Container(
                       padding: const EdgeInsets.all(15),
                       decoration: BoxDecoration(
@@ -68,13 +68,13 @@ class WelcomeView extends GetView<WelcomeController> {
                     
                     const SizedBox(height: 30),
                     
-                    // TYPOGRAPHY YANG LEBIH MODERN
+                    
                     const Text(
                       "Motorik Kids",
                       style: TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.w800,
-                        color: Color(0xFF2D3142), // Warna Dark Slate (bukan hitam pekat)
+                        color: Color(0xFF2D3142), 
                         letterSpacing: 1.0,
                       ),
                     ),
@@ -92,33 +92,33 @@ class WelcomeView extends GetView<WelcomeController> {
                     
                     const SizedBox(height: 50),
 
-                    // CARD PILIHAN GURU (Primary Styling)
+                    
                     _buildRoleCard(
                       context,
                       title: "Saya Guru",
                       subtitle: "Input observasi & kelola siswa",
                       imagePath: "assets/guru.png",
                       primaryColor: Colors.orange,
-                      accentColor: const Color(0xFFFFE0B2), // Orange muda
+                      accentColor: const Color(0xFFFFE0B2), 
                       onTap: () => Get.toNamed(Routes.LOGIN, arguments: {'role': 'teacher'}),
                     ),
 
                     const SizedBox(height: 20),
 
-                    // CARD PILIHAN ORANG TUA (Secondary Styling)
+                    
                     _buildRoleCard(
                       context,
                       title: "Saya Orang Tua",
                       subtitle: "Lihat hasil perkembangan anak",
                       imagePath: "assets/orang tua.png",
                       primaryColor: Colors.blueAccent,
-                      accentColor: const Color(0xFFBBDEFB), // Biru muda
+                      accentColor: const Color(0xFFBBDEFB), 
                       onTap: () => Get.toNamed(Routes.LOGIN, arguments: {'role': 'parent'}),
                     ),
                     
                     const SizedBox(height: 40),
                     
-                    // Footer version (Opsional)
+                    
                     Text(
                       "v1.0.0 • Universitas Harkat Negeri",
                       style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
@@ -133,8 +133,7 @@ class WelcomeView extends GetView<WelcomeController> {
     );
   }
 
-  // WIDGET CARD "PRO" LEVEL
-  // Menggunakan Material + InkWell untuk efek sentuh (Ripple Effect)
+
   Widget _buildRoleCard(
     BuildContext context, {
     required String title,
@@ -148,9 +147,9 @@ class WelcomeView extends GetView<WelcomeController> {
       width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20), // Radius besar = modern
+        borderRadius: BorderRadius.circular(20), 
         boxShadow: [
-          // Multi-layer shadow biar terlihat "mengambang" (depth)
+          
           BoxShadow(
             color: primaryColor.withOpacity(0.08),
             offset: const Offset(0, 10),
@@ -164,13 +163,13 @@ class WelcomeView extends GetView<WelcomeController> {
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(20),
-          splashColor: primaryColor.withOpacity(0.1), // Efek cipratan warna saat diklik
+          splashColor: primaryColor.withOpacity(0.1), 
           highlightColor: primaryColor.withOpacity(0.05),
           child: Padding(
             padding: const EdgeInsets.all(20.0),
             child: Row(
               children: [
-                // Container untuk Gambar
+                
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -181,7 +180,7 @@ class WelcomeView extends GetView<WelcomeController> {
                 ),
                 const SizedBox(width: 20),
                 
-                // Teks Judul & Subtitle
+                
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -206,7 +205,7 @@ class WelcomeView extends GetView<WelcomeController> {
                   ),
                 ),
                 
-                // Icon Panah
+                
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(

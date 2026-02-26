@@ -3,16 +3,16 @@ import 'package:get/get.dart';
 import 'package:motorikkids/app/services/nlp_service.dart';
 
 class AssessmentFormController extends GetxController {
-  // Controller untuk input teks di layar
+  
   final teksObservasi = TextEditingController();
   
-  // State variables (menggunakan .obs agar reaktif di layar)
+  
   final isLoading = false.obs;
   final hasilPrediksi = "".obs;
   final skorKeyakinan = "".obs;
 
   void analisisData() async {
-    // Cek jika teks kosong
+    
     if (teksObservasi.text.isEmpty) {
       Get.snackbar(
         "Peringatan", 
@@ -23,20 +23,20 @@ class AssessmentFormController extends GetxController {
       return;
     }
 
-    // Ubah status jadi loading (UI akan otomatis menampilkan loading)
+    
     isLoading.value = true;
     
-    // Panggil API Python
+    
     final hasil = await NlpService.analisisMotorik(teksObservasi.text);
     
-    // Ubah status loading selesai
+    
     isLoading.value = false;
 
     if (hasil != null) {
-      // Masukkan hasil dari API ke state variable
+      
       hasilPrediksi.value = hasil['prediksi_status'];
       
-      // Format skor desimal (0.9231) menjadi persentase (92.3%)
+      
       double skor = hasil['tingkat_keyakinan'];
       skorKeyakinan.value = (skor * 100).toStringAsFixed(1) + "%";
     } else {
@@ -51,7 +51,7 @@ class AssessmentFormController extends GetxController {
 
   @override
   void onClose() {
-    teksObservasi.dispose(); // Jangan lupa bersihkan memori
+    teksObservasi.dispose(); 
     super.onClose();
   }
 }

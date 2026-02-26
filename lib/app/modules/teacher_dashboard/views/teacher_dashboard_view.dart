@@ -9,7 +9,7 @@ class TeacherDashboardView extends GetView<TeacherDashboardController> {
 
   @override
   Widget build(BuildContext context) {
-    // Config Status Bar
+    
     SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
       systemNavigationBarColor: Colors.white,
       systemNavigationBarIconBrightness: Brightness.dark,
@@ -22,15 +22,15 @@ class TeacherDashboardView extends GetView<TeacherDashboardController> {
       body: SafeArea(
         child: Stack(
           children: [
-            // --- KONTEN SCROLLABLE ---
+            
             SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(24, 20, 24, 100),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildHeader(), // HEADER (Salam & Profil)
+                  _buildHeader(), 
                   const SizedBox(height: 24),
-                  _buildHeroCard(), // Kartu Statistik
+                  _buildHeroCard(), 
                   const SizedBox(height: 30),
                   const Text(
                     "Daftar Anak Didik",
@@ -38,7 +38,7 @@ class TeacherDashboardView extends GetView<TeacherDashboardController> {
                   ),
                   const SizedBox(height: 16),
                   
-                  // LIST SISWA
+                  
                   Obx(() {
                     if (controller.studentsStream.isEmpty) {
                       return _buildEmptyState();
@@ -64,7 +64,7 @@ class TeacherDashboardView extends GetView<TeacherDashboardController> {
               ),
             ),
 
-            // --- TOMBOL TAMBAH (STICKY BOTTOM) ---
+            
             Positioned(
               left: 24, right: 24, bottom: 24,
               child: Container(
@@ -100,27 +100,25 @@ class TeacherDashboardView extends GetView<TeacherDashboardController> {
     );
   }
 
-  // ==========================================================
-  //      ✨ HEADER (SALAM + PROFILE CLICK) ✨
-  // ==========================================================
+
   Widget _buildHeader() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // Baris 1: Assalamualaikum + Waktu
+          
           Text(
             "Assalamualaikum, ${controller.getSalam()}", 
             style: const TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w500)
           ),
           const SizedBox(height: 4),
           
-          // Baris 2: Pak/Bu + Nama
+          
           Obx(() {
             String fullName = controller.namaGuru.value;
-            String call = controller.panggilan.value; // Pak atau Bu
+            String call = controller.panggilan.value; 
             
-            // Cek agar tidak double (misal nama sudah ada "Pak")
+            
             String displayName = fullName;
             if (call.isNotEmpty && !fullName.toLowerCase().startsWith(call.toLowerCase())) {
               displayName = "$call $fullName";
@@ -135,7 +133,7 @@ class TeacherDashboardView extends GetView<TeacherDashboardController> {
           }),
         ]),
         
-        // Foto Profil (Bisa Diklik ke Profile)
+        
         GestureDetector(
           onTap: () => Get.toNamed(Routes.PROFILE),
           child: Container(
@@ -155,9 +153,7 @@ class TeacherDashboardView extends GetView<TeacherDashboardController> {
     );
   }
 
-  // ==========================================================
-  //      ✨ DIALOG INPUT (TAMBAH & EDIT) ✨
-  // ==========================================================
+
   void _showInputDialog(BuildContext context, {required bool isEdit, String? docId, Map<String, dynamic>? dataLama}) {
     if (!isEdit) {
       controller.resetForm();
@@ -227,9 +223,7 @@ class TeacherDashboardView extends GetView<TeacherDashboardController> {
     );
   }
 
-  // ==========================================================
-  //      ✨ ITEM SISWA (DENGAN EDIT & DELETE) ✨
-  // ==========================================================
+
   Widget _buildStudentItem({required BuildContext context, required Map<String, dynamic> data, required Color statusColor}) {
     String name = data['name'] ?? "No Name";
     String kelas = data['kelas'] ?? "-";
@@ -272,7 +266,7 @@ class TeacherDashboardView extends GetView<TeacherDashboardController> {
     );
   }
 
-  // --- Helper Widgets ---
+  
   Widget _label(String t) => Padding(padding: const EdgeInsets.only(bottom: 6), child: Text(t, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)));
   InputDecoration _inputDecor(IconData i) => InputDecoration(filled: true, fillColor: const Color(0xFFF5F6FA), prefixIcon: Icon(i, color: Colors.grey), border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none));
   Widget _dropdown(RxString v, List<String> l) => Container(padding: const EdgeInsets.symmetric(horizontal: 12), decoration: BoxDecoration(color: const Color(0xFFF5F6FA), borderRadius: BorderRadius.circular(16)), child: DropdownButtonHideUnderline(child: DropdownButton<String>(value: v.value, isExpanded: true, items: l.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(), onChanged: (val) => v.value = val!)));

@@ -6,20 +6,20 @@ import '../../../routes/app_pages.dart';
 class StudentListController extends GetxController {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Stream: Ini yang bikin list-nya otomatis update kalau ada data baru
+  
   Stream<QuerySnapshot> get studentsStream => _firestore
       .collection('students')
       .orderBy('nama_siswa', descending: false)
       .snapshots();
 
-  // Controller untuk Form Tambah Siswa
+  
   final namaC = TextEditingController();
   final nikC = TextEditingController(); // Opsional, buat ID unik
   final kelasC = TextEditingController();
   var selectedGender = 'L'.obs;
   var selectedDate = DateTime.now().obs;
 
-  // Fungsi Tambah Siswa ke Firestore
+  
   Future<void> addStudent() async {
     if (namaC.text.isNotEmpty && kelasC.text.isNotEmpty) {
       try {
@@ -29,11 +29,11 @@ class StudentListController extends GetxController {
           'kelas': kelasC.text,
           'jenis_kelamin': selectedGender.value,
           'tgl_lahir': selectedDate.value.toIso8601String(),
-          'parent_id': '', // Nanti diisi kalau fitur connect Ortu sudah ada
+          'parent_id': '', 
           'created_at': FieldValue.serverTimestamp(),
         });
         
-        Get.back(); // Tutup Dialog
+        Get.back(); 
         _resetForm();
         Get.snackbar("Sukses", "Data siswa berhasil ditambahkan", backgroundColor: Colors.green.shade100);
       } catch (e) {
@@ -44,7 +44,7 @@ class StudentListController extends GetxController {
     }
   }
 
-  // Fungsi Hapus Siswa
+  
   Future<void> deleteStudent(String docId) async {
     try {
       await _firestore.collection('students').doc(docId).delete();
@@ -54,7 +54,7 @@ class StudentListController extends GetxController {
     }
   }
 
-  // Helper ke Form Observasi
+  
   void goToAssessment(Map<String, dynamic> studentData, String docId) {
     Get.toNamed(Routes.ASSESSMENT_FORM, arguments: {
       'id': docId,

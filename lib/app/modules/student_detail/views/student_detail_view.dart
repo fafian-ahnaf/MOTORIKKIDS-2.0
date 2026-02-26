@@ -9,13 +9,13 @@ class StudentDetailView extends GetView<StudentDetailController> {
 
   @override
   Widget build(BuildContext context) {
-    // 1. TANGKAP DATA AWAL
+    
     final Map<String, dynamic> args = Get.arguments ?? {};
     final String name = args['name'] ?? "Tanpa Nama";
     final String age = args['age'] ?? "5 Tahun";
     final Color color = args['color'] ?? Colors.blue;
 
-    // 2. CONFIG STATUS BAR (ICON HITAM)
+    
     SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.dark,
@@ -43,18 +43,18 @@ class StudentDetailView extends GetView<StudentDetailController> {
       body: SafeArea(
         child: Stack(
           children: [
-            // --- LAYER 1: KONTEN SCROLLABLE ---
+            
             SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(24, 10, 24, 100),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 1. KARTU PROFIL
+                  
                   _buildProfileCard(name, color),
 
                   const SizedBox(height: 24),
                   
-                  // 2. STATISTIK KECIL
+                  
                   Row(
                     children: [
                       Expanded(child: _buildDetailCard(Icons.cake_rounded, Colors.orange, "Umur", age)),
@@ -67,7 +67,7 @@ class StudentDetailView extends GetView<StudentDetailController> {
                   const Text("Analisa Perkembangan", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
                   const SizedBox(height: 16),
 
-                  // 3. KARTU GRAFIK & ANALISA (TOMBOL AI DI BAWAH)
+                  
                   Obx(() => _buildCombinedMotorikCard(
                     context: context,
                     age: age,
@@ -79,7 +79,7 @@ class StudentDetailView extends GetView<StudentDetailController> {
                   
                   const SizedBox(height: 30),
                   
-                  // 4. TAB PILIHAN (MANUAL vs AI)
+                  
                   Container(
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
@@ -95,7 +95,7 @@ class StudentDetailView extends GetView<StudentDetailController> {
                   ),
                   const SizedBox(height: 16),
 
-                  // 5. LIST ITEM (DYNAMIC CONTENT)
+                  
                   Obx(() {
                     if (controller.selectedTab.value == 0) {
                       if (controller.assessmentHistory.isEmpty) {
@@ -131,7 +131,7 @@ class StudentDetailView extends GetView<StudentDetailController> {
               ),
             ),
 
-            // --- LAYER 2: TOMBOL TAMBAH (STICKY BOTTOM) ---
+            
             Positioned(
               left: 24, right: 24, bottom: 24,
               child: Container(
@@ -167,9 +167,7 @@ class StudentDetailView extends GetView<StudentDetailController> {
     );
   }
 
-  // ==========================================================
-  //      ✨ KARTU MOTORIK GABUNGAN + TOMBOL ANALISA (BAWAH) ✨
-  // ==========================================================
+
   Widget _buildCombinedMotorikCard({
     required BuildContext context,
     required String age,
@@ -200,7 +198,7 @@ class StudentDetailView extends GetView<StudentDetailController> {
           ),
           const SizedBox(height: 24),
 
-          // 1. MOTORIK HALUS
+          
           _buildSingleProgressRow(
             label: "Motorik Halus",
             percent: fineAvg,
@@ -214,7 +212,7 @@ class StudentDetailView extends GetView<StudentDetailController> {
             child: Divider(height: 1, thickness: 1, color: Color(0xFFF0F0F0)),
           ),
 
-          // 2. MOTORIK KASAR
+          
           _buildSingleProgressRow(
             label: "Motorik Kasar",
             percent: grossAvg,
@@ -225,7 +223,7 @@ class StudentDetailView extends GetView<StudentDetailController> {
 
           const SizedBox(height: 24),
 
-          // 3. TOMBOL ANALISA AI (POSISI BARU: DI BAWAH)
+          
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
@@ -244,9 +242,7 @@ class StudentDetailView extends GetView<StudentDetailController> {
     );
   }
 
-  // ==========================================================
-  //      ✨ DIALOG HASIL ANALISA (POP-UP LOKAL) ✨
-  // ==========================================================
+
   void _showAnalysisResultDialog(BuildContext context, String age, double fineAvg, double grossAvg) {
     String summary = _generateSimpleSummary(fineAvg, grossAvg);
     String status = controller.currentStatus.value;
@@ -285,7 +281,7 @@ class StudentDetailView extends GetView<StudentDetailController> {
 
               const SizedBox(height: 30),
 
-              // BUTTON KE REKOMENDASI AI
+              
               Row(
                 children: [
                   Expanded(
@@ -330,9 +326,7 @@ class StudentDetailView extends GetView<StudentDetailController> {
     );
   }
 
-  // ==========================================================
-  //      ✨ DIALOG INPUT & EDIT ✨
-  // ==========================================================
+
   void _showAssessmentDialog(BuildContext context, {required bool isEdit, Map<String, dynamic>? oldData}) {
     if (isEdit && oldData != null) {
       controller.activityNameC.text = oldData['activity'];
@@ -417,11 +411,7 @@ class StudentDetailView extends GetView<StudentDetailController> {
       ),
     );
   }
-
-  // ==========================================================
-  //      ✨ HELPER WIDGETS ✨
-  // ==========================================================
-
+  
   Widget _buildTabButton(String label, int index) {
     bool isActive = controller.selectedTab.value == index;
     return Expanded(

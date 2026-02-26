@@ -7,7 +7,7 @@ class LoginView extends GetView<LoginController> {
 
   @override
   Widget build(BuildContext context) {
-    // GestureDetector ini penting biar keyboard nutup kalau tap area kosong
+    
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
@@ -17,7 +17,7 @@ class LoginView extends GetView<LoginController> {
             height: MediaQuery.of(context).size.height,
             child: Stack(
               children: [
-                // 1. BACKGROUND DECORATION (Dynamic Color)
+                
                 Obx(() => Positioned(
                   top: -100,
                   right: -100,
@@ -43,16 +43,16 @@ class LoginView extends GetView<LoginController> {
                   ),
                 )),
 
-                // 2. FORM CONTENT
+                
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24.0),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Spacer(), // Dorong ke tengah
+                      const Spacer(), 
                       
-                      // HEADER ICON & TEXT
+                      
                       Center(
                         child: Obx(() => Container(
                           padding: const EdgeInsets.all(20),
@@ -89,7 +89,7 @@ class LoginView extends GetView<LoginController> {
 
                       const SizedBox(height: 40),
 
-                      // INPUT EMAIL
+                      
                       _buildTextField(
                         controller: controller.emailC,
                         label: "Email Address",
@@ -99,7 +99,7 @@ class LoginView extends GetView<LoginController> {
                       
                       const SizedBox(height: 20),
 
-                      // INPUT PASSWORD (With Eye Toggle)
+                      
                       Obx(() => _buildTextField(
                         controller: controller.passC,
                         label: "Password",
@@ -114,18 +114,18 @@ class LoginView extends GetView<LoginController> {
                         ),
                       )),
 
-                      // LUPA PASSWORD?
+                      
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton(
-                          onPressed: () {}, // Nanti diimplementasi
+                          onPressed: () {}, 
                           child: const Text("Lupa Password?", style: TextStyle(color: Colors.grey)),
                         ),
                       ),
 
                       const SizedBox(height: 20),
 
-                      // TOMBOL LOGIN BESAR
+                      
                       Obx(() => SizedBox(
                         height: 55,
                         child: ElevatedButton(
@@ -154,7 +154,7 @@ class LoginView extends GetView<LoginController> {
 
                       const Spacer(), 
 
-                      // FOOTER REGISTER
+                      
                       Padding(
                         padding: const EdgeInsets.only(bottom: 30.0),
                         child: Row(
@@ -178,7 +178,7 @@ class LoginView extends GetView<LoginController> {
                   ),
                 ),
                 
-                // TOMBOL BACK (Pojok Kiri Atas)
+                
                 Positioned(
                   top: 50,
                   left: 20,
@@ -200,7 +200,7 @@ class LoginView extends GetView<LoginController> {
     );
   }
 
-  // WIDGET TEXTFIELD YANG REUSABLE & CANTIK
+  
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
@@ -211,9 +211,9 @@ class LoginView extends GetView<LoginController> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F6FA), // Warna abu-abu sangat muda (Soft)
+        color: const Color(0xFFF5F6FA), 
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.transparent), // Border invisible by default
+        border: Border.all(color: Colors.transparent), 
       ),
       child: TextField(
         controller: controller,
@@ -225,7 +225,7 @@ class LoginView extends GetView<LoginController> {
           labelStyle: TextStyle(color: Colors.grey.shade500),
           prefixIcon: Icon(icon, color: Colors.grey.shade500),
           suffixIcon: suffixIcon,
-          border: InputBorder.none, // Hilangkan garis bawah default
+          border: InputBorder.none, 
           contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           floatingLabelBehavior: FloatingLabelBehavior.auto,
         ),

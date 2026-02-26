@@ -7,16 +7,16 @@ class TeacherDashboardController extends GetxController {
   FirebaseFirestore firestore = FirebaseFirestore.instance;
   FirebaseAuth auth = FirebaseAuth.instance;
 
-  // --- DATA OBSERVABLE ---
+  
   RxList<Map<String, dynamic>> studentsStream = <Map<String, dynamic>>[].obs;
   RxInt totalSiswa = 0.obs;
   RxBool isLoading = false.obs;
   
-  // Data Profil Guru
+  
   RxString namaGuru = "Guru".obs;
-  RxString panggilan = "".obs; // <--- INI YANG HILANG SEBELUMNYA
+  RxString panggilan = "".obs; 
 
-  // --- INPUT CONTROLLERS ---
+  
   final nameC = TextEditingController();
   Rx<DateTime?> selectedBirthDate = Rx<DateTime?>(null); 
   RxString ageText = "".obs; 
@@ -29,7 +29,7 @@ class TeacherDashboardController extends GetxController {
     super.onInit();
     loadProfile();
     
-    // Bind Stream Data Siswa (Hanya milik guru yang login)
+    
     User? user = auth.currentUser;
     if (user != null) {
       studentsStream.bindStream(
@@ -51,7 +51,7 @@ class TeacherDashboardController extends GetxController {
     }
   }
 
-  // --- LOGIKA LOAD PROFIL ---
+  
   void loadProfile() async {
     User? user = auth.currentUser;
     if (user != null) {
@@ -59,13 +59,13 @@ class TeacherDashboardController extends GetxController {
         var doc = await firestore.collection('users').doc(user.uid).get();
         if (doc.exists) {
           var data = doc.data();
-          // 1. Ambil Nama
+          
           String fetchedName = data?['nama_lengkap'] ?? "";
           if (fetchedName.isNotEmpty) {
             namaGuru.value = fetchedName;
           }
 
-          // 2. Ambil Gender untuk Panggilan (Pak/Bu)
+          
           String gender = data?['jenis_kelamin'] ?? "";
           if (gender == "Laki-laki") {
             panggilan.value = "Pak";
@@ -77,14 +77,14 @@ class TeacherDashboardController extends GetxController {
         print("Error load profil: $e");
       }
       
-      // Fallback Nama jika DB gagal
+      
       if (namaGuru.value == "Guru" && user.displayName != null) {
         namaGuru.value = user.displayName!;
       }
     }
   }
 
-  // --- LOGIKA SALAM WAKTU (INI JUGA HILANG SEBELUMNYA) ---
+  
   String getSalam() {
     var hour = DateTime.now().hour;
     if (hour < 11) return "Selamat Pagi";
@@ -93,7 +93,7 @@ class TeacherDashboardController extends GetxController {
     return "Selamat Malam";
   }
 
-  // --- FUNGSI RESET & EDIT ---
+  
   void resetForm() {
     nameC.clear();
     selectedBirthDate.value = null;
@@ -114,7 +114,7 @@ class TeacherDashboardController extends GetxController {
     } else { selectedBirthDate.value = null; }
   }
 
-  // --- CRUD (CREATE, UPDATE, DELETE) ---
+  
   void addStudent() async {
     if (_validateForm()) {
       try {
@@ -168,7 +168,7 @@ class TeacherDashboardController extends GetxController {
     );
   }
 
-  // --- HELPER LAINNYA ---
+  
   void pickDate(BuildContext context) async {
     DateTime? picked = await showDatePicker(
       context: context,

@@ -24,10 +24,10 @@ class ProfileView extends GetView<ProfileController> {
           return const Center(child: CircularProgressIndicator());
         }
 
-        // --- 💡 LOGIKA GAMBAR OTOMATIS BERDASARKAN ROLE ---
+        
         bool isParent = controller.role.value == 'parent';
         
-        // Pastikan nama file di folder assets Anda sesuai dengan ini:
+        
         String imageAsset = isParent ? 'assets/orang tua.png' : 'assets/guru.png'; 
         
         String roleLabel = isParent ? 'Orang Tua' : 'Guru';
@@ -37,7 +37,7 @@ class ProfileView extends GetView<ProfileController> {
           padding: const EdgeInsets.all(24),
           child: Column(
             children: [
-              // 1. FOTO PROFIL
+              
               Center(
                 child: Container(
                   padding: const EdgeInsets.all(4),
@@ -49,13 +49,13 @@ class ProfileView extends GetView<ProfileController> {
                   child: CircleAvatar(
                     radius: 60,
                     backgroundColor: Colors.blue.shade50,
-                    backgroundImage: AssetImage(imageAsset), // <-- MENGGUNAKAN VARIABEL DI ATAS
+                    backgroundImage: AssetImage(imageAsset), 
                   ),
                 ),
               ),
               const SizedBox(height: 16),
 
-              // 2. NAMA & LABEL ROLE
+              
               Text(
                 controller.name.value, 
                 style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)
@@ -71,13 +71,13 @@ class ProfileView extends GetView<ProfileController> {
               ),
               const SizedBox(height: 32),
 
-              // 3. INFORMASI KONTAK
+              
               _buildInfoTile(Icons.email_outlined, "Email", controller.email.value),
               const SizedBox(height: 16),
               _buildInfoTile(Icons.phone_outlined, "Nomor Telepon", controller.phone.value),
               const SizedBox(height: 40),
 
-              // 4. TOMBOL KELUAR
+              
               SizedBox(
                 width: double.infinity,
                 height: 55,
@@ -99,7 +99,7 @@ class ProfileView extends GetView<ProfileController> {
     );
   }
 
-  // WIDGET HELPER UNTUK KOTAK INFORMASI
+  
   Widget _buildInfoTile(IconData icon, String title, String value) {
     return Container(
       padding: const EdgeInsets.all(16),

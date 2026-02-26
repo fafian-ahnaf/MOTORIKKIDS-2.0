@@ -6,33 +6,33 @@ import 'package:intl/intl.dart';
 class StudentDetailController extends GetxController {
   FirebaseFirestore firestore = FirebaseFirestore.instance;
 
-  // Data Siswa
+  
   late String studentId;
   var studentName = "".obs;
-  var studentAge = "".obs; // Disimpan untuk dikirim ke AI nanti
+  var studentAge = "".obs; 
   
-  // Input Controllers (Form)
+  
   final activityNameC = TextEditingController();
   final notesC = TextEditingController();
   
-  // State UI
-  var selectedTab = 0.obs; // 0 = Riwayat Nilai, 1 = Saran AI
+  
+  var selectedTab = 0.obs; 
   var selectedMotorikType = 'Halus'.obs;
   var inputScore = 75.0.obs; 
   var isLoading = false.obs;
 
-  // --- OBSERVABLES DATA (REALTIME) ---
   
-  // 1. Statistik Motorik
-  var fineMotorScore = 0.0.obs; // Rata-rata (0.0 - 1.0) untuk Progress Bar
+  
+  
+  var fineMotorScore = 0.0.obs; 
   var grossMotorScore = 0.0.obs; 
-  var fineMotorSum = 0.0.obs;   // Total Poin (Angka) untuk Teks
+  var fineMotorSum = 0.0.obs;   
   var grossMotorSum = 0.0.obs;  
   var currentStatus = "-".obs;
 
-  // 2. List Data
-  var assessmentHistory = <Map<String, dynamic>>[].obs;   // List Input Manual
-  var recommendationHistory = <Map<String, dynamic>>[].obs; // List Saran AI Tersimpan
+  
+  var assessmentHistory = <Map<String, dynamic>>[].obs;   
+  var recommendationHistory = <Map<String, dynamic>>[].obs; 
 
   @override
   void onInit() {
@@ -45,26 +45,24 @@ class StudentDetailController extends GetxController {
       currentStatus.value = args['status'] ?? "-";
       
       if (studentId.isNotEmpty) {
-        monitorStudentData();      // Pantau Nilai & Status
-        monitorRecommendations();  // Pantau Saran AI
+        monitorStudentData();      
+        monitorRecommendations();  
       }
     }
   }
 
-  // ==========================================================
-  //      🔥 1. MONITOR NILAI & RIWAYAT MANUAL (ARRAY) 🔥
-  // ==========================================================
+
   void monitorStudentData() {
     firestore.collection('students').doc(studentId).snapshots().listen((snapshot) {
       if (snapshot.exists) {
         var data = snapshot.data();
         
-        // A. Ambil & Sortir Riwayat
+        
         List<dynamic> history = data?['riwayat'] ?? [];
         history.sort((a, b) => b['date'].compareTo(a['date'])); // Terbaru diatas
         assessmentHistory.value = history.map((e) => e as Map<String, dynamic>).toList();
 
-        // B. Hitung Statistik (Total & Rata-rata)
+        
         double totalFine = 0;
         double totalGross = 0;
         int countFine = 0;
@@ -81,16 +79,15 @@ class StudentDetailController extends GetxController {
           }
         }
 
-        // Set Nilai Total (Untuk Teks: "150 Poin")
+        
         fineMotorSum.value = totalFine;
         grossMotorSum.value = totalGross;
 
-        // Set Nilai Rata-rata (Untuk Progress Bar: 0.0 - 1.0)
-        // Jika belum ada data, set 0
+
         fineMotorScore.value = countFine == 0 ? 0.0 : (totalFine / countFine) / 100;
         grossMotorScore.value = countGross == 0 ? 0.0 : (totalGross / countGross) / 100;
         
-        // C. Update Status Global (Jika ada perubahan dari database)
+        
         if (data?['status'] != null) {
           currentStatus.value = data!['status'];
         }
@@ -98,9 +95,7 @@ class StudentDetailController extends GetxController {
     });
   }
 
-  // ==========================================================
-  //      🤖 2. MONITOR RIWAYAT SARAN AI (SUB-COLLECTION) 🤖
-  // ==========================================================
+
   void monitorRecommendations() {
     firestore
         .collection('students')
@@ -111,17 +106,13 @@ class StudentDetailController extends GetxController {
         .listen((snapshot) {
       recommendationHistory.value = snapshot.docs.map((doc) {
         var data = doc.data();
-        data['id'] = doc.id; // Simpan ID dokumen
+        data['id'] = doc.id; 
         return data;
       }).toList();
     });
   }
 
-  // ==========================================================
-  //      📝 3. CRUD: TAMBAH & UPDATE PENILAIAN 📝
-  // ==========================================================
-  
-  // Tambah Data Baru
+
   void addAssessment() async {
     if (activityNameC.text.isNotEmpty && studentId.isNotEmpty) {
       _saveToFirebase(
@@ -138,7 +129,7 @@ class StudentDetailController extends GetxController {
     }
   }
 
-  // Update Data Lama
+  
   void updateAssessment(Map<String, dynamic> oldData) async {
     if (activityNameC.text.isNotEmpty) {
       Map<String, dynamic> newData = {
@@ -146,23 +137,22 @@ class StudentDetailController extends GetxController {
         'activity': activityNameC.text,
         'notes': notesC.text,
         'score': inputScore.value,
-        'date': oldData['date'], // Pertahankan tanggal asli
+        'date': oldData['date'], 
       };
 
       try {
         isLoading.value = true;
         var docRef = firestore.collection('students').doc(studentId);
         
-        // Hapus data lama dari Array, lalu masukkan data baru
-        // (Firestore Array tidak bisa update index spesifik, jadi harus remove-add)
+
         await docRef.update({'riwayat': FieldValue.arrayRemove([oldData])});
         await docRef.update({'riwayat': FieldValue.arrayUnion([newData])});
 
-        // Update status siswa berdasarkan nilai terbaru
+        
         await _recalculateGlobalStatus(docRef);
 
         isLoading.value = false;
-        Get.back(); // Tutup Dialog
+        Get.back(); 
         _clearForm();
         Get.snackbar("Sukses", "Data berhasil diubah!", backgroundColor: Colors.green, colorText: Colors.white);
       } catch (e) {
@@ -172,18 +162,18 @@ class StudentDetailController extends GetxController {
     }
   }
 
-  // Helper Simpan ke Firebase
+  
   void _saveToFirebase({required Map<String, dynamic> newLog}) async {
     try {
       isLoading.value = true;
       var docRef = firestore.collection('students').doc(studentId);
 
-      // Masukkan ke Array 'riwayat'
+      
       await docRef.update({
         'riwayat': FieldValue.arrayUnion([newLog]),
       });
 
-      // Hitung ulang status
+      
       await _recalculateGlobalStatus(docRef);
 
       isLoading.value = false;
@@ -195,19 +185,14 @@ class StudentDetailController extends GetxController {
       Get.snackbar("Error", "$e", backgroundColor: Colors.red);
     }
   }
-
-  // ==========================================================
-  //      ⚙️ 4. HELPER FUNCTIONS ⚙️
-  // ==========================================================
-
-  // Update Status Siswa (Label di Depan)
+  
   Future<void> _recalculateGlobalStatus(DocumentReference docRef) async {
     String newStatus = "Perlu Latihan";
     if (inputScore.value >= 85) newStatus = "Sangat Baik";
     else if (inputScore.value >= 70) newStatus = "Baik";
     else if (inputScore.value >= 55) newStatus = "Cukup";
     
-    // Hanya update field 'status'
+    
     await docRef.update({'status': newStatus});
   }
 

@@ -13,7 +13,7 @@ class RegisterView extends GetView<RegisterController> {
         backgroundColor: Colors.white,
         body: Stack(
           children: [
-            // BACKGROUND BULAT
+            
             Obx(() => Positioned(
               top: -60,
               right: -60,
@@ -27,11 +27,11 @@ class RegisterView extends GetView<RegisterController> {
               ),
             )),
             
-            // FORM INPUT
+            
             SafeArea(
               child: Column(
                 children: [
-                  // HEADER
+                  
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                     child: Row(
@@ -56,7 +56,7 @@ class RegisterView extends GetView<RegisterController> {
                     ),
                   ),
 
-                  // INPUT FIELD LIST
+                  
                   Expanded(
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.all(24),
@@ -113,7 +113,7 @@ class RegisterView extends GetView<RegisterController> {
                           )),
                           const SizedBox(height: 30),
 
-                          // PILIH ANAK (KHUSUS ORANG TUA)
+                          
                           Obx(() {
                             if (controller.currentRole.value == 'parent') {
                               return Column(

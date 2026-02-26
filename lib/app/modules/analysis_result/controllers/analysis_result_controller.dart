@@ -5,56 +5,54 @@ import 'package:http/http.dart' as http;
 import 'package:motorikkids/app/modules/recommendation/views/recommendation_view.dart';
 
 class AnalysisResultController extends GetxController {
-  // --- STATE LOADING ---
+  
   var isLoading = true.obs; 
 
-  // --- DATA REAKTIF ---
+  
   var inputTeks = "".obs;
   var status = "Memproses...".obs;
   var tingkatKeyakinan = 0.0.obs;
   var statusColor = Rx<Color>(Colors.grey);
 
-  // Rekomendasi (Karena API Flask hanya menebak status, kita buat logic saran di Flutter)
+  
   var recommendationData = {}.obs;
 
   @override
   void onInit() {
     super.onInit();
     
-    // 1. Tangkap argumen (teks observasi) dari halaman sebelumnya
-    // Catatan: Pastikan di StudentDetailView Anda mengirim argumen 'teks'
+
     final Map<String, dynamic> args = Get.arguments ?? {};
     String teksObservasi = args['teks'] ?? "Anak sudah mulai bisa melompat walau belum stabil.";
     inputTeks.value = teksObservasi;
 
-    // 2. Tembak ke API Flask Anda
+    
     fetchPredictionFromFlask(teksObservasi);
   }
 
-  // --- FUNGSI PEMANGGIL API FLASK ---
+  
   Future<void> fetchPredictionFromFlask(String teks) async {
     try {
       isLoading.value = true;
 
-      // PENTING: Ganti 192.168.X.X dengan IPv4 Address laptop Anda (cek lewat CMD -> ipconfig)
-      // Jangan gunakan localhost atau 127.0.0.1 jika menggunakan HP Fisik
+
       final String apiUrl = "http://192.168.1.8:5000/predict"; 
       
       final response = await http.post(
         Uri.parse(apiUrl),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"teks": teks}),
-      ).timeout(const Duration(seconds: 15)); // Timeout 15 detik
+      ).timeout(const Duration(seconds: 15)); 
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = jsonDecode(response.body);
 
         if (responseData['status'] == 'success') {
-          // Tangkap hasil dari Flask
-          status.value = responseData['data']['prediksi_status']; // Hasil: BB, MB, BSH, BSB
+          
+          status.value = responseData['data']['prediksi_status']; 
           tingkatKeyakinan.value = responseData['data']['tingkat_keyakinan'];
 
-          // Atur warna dan rekomendasi berdasarkan label
+          
           _generateRecommendationBasedOnStatus(status.value);
         } else {
           _setFallbackData("Gagal memproses data di server.");
@@ -69,7 +67,7 @@ class AnalysisResultController extends GetxController {
     }
   }
 
-  // --- LOGIKA REKOMENDASI BERDASARKAN STATUS NLP ---
+
   void _generateRecommendationBasedOnStatus(String prediksi) {
     if (prediksi == "BB") { // Belum Berkembang
       statusColor.value = Colors.red.shade400;
@@ -119,7 +117,7 @@ class AnalysisResultController extends GetxController {
     };
   }
 
-  // --- FUNGSI NAVIGASI ---
+
   void goToRecommendation() {
     Get.to(() => const RecommendationView());
   }

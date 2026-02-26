@@ -21,7 +21,7 @@ class RecommendationView extends GetView<RecommendationController> {
         ),
       ),
       body: Obx(() {
-        // 1. LOADING STATE
+        
         if (controller.isLoading.value) {
           return const Center(
             child: CircularProgressIndicator(color: Color(0xFFA5D6A7)),
@@ -30,12 +30,12 @@ class RecommendationView extends GetView<RecommendationController> {
 
         final data = controller.recommendationData;
 
-        // 2. EMPTY STATE (Jika data gagal dimuat atau belum ada)
+        
         if (data.isEmpty || data['title'] == "Belum Ada Rekomendasi") {
           return _buildEmptyState();
         }
 
-        // 3. MAIN CONTENT
+        
         return Stack(
           children: [
             SingleChildScrollView(
@@ -43,7 +43,7 @@ class RecommendationView extends GetView<RecommendationController> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // CARD HEADER: Judul & Deskripsi Singkat
+                  
                   _buildHeaderCard(data),
 
                   const SizedBox(height: 24),
@@ -51,13 +51,13 @@ class RecommendationView extends GetView<RecommendationController> {
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
                   const SizedBox(height: 16),
 
-                  // CARD DETAIL: Tujuan, Cara, Durasi, Lokasi
+                  
                   _buildDetailCard(data),
                 ],
               ),
             ),
 
-            // TOMBOL SIMPAN (Hanya muncul jika Role adalah Guru)
+            
             if (controller.role != 'parent')
               Positioned(
                 left: 24, right: 24, bottom: 24,
@@ -82,7 +82,7 @@ class RecommendationView extends GetView<RecommendationController> {
     );
   }
 
-  // --- WIDGET HELPER: HEADER ---
+  
   Widget _buildHeaderCard(Map<String, String> data) {
     return Container(
       width: double.infinity,
@@ -112,7 +112,7 @@ class RecommendationView extends GetView<RecommendationController> {
     );
   }
 
-  // --- WIDGET HELPER: DETAIL ---
+  
   Widget _buildDetailCard(Map<String, String> data) {
     return Container(
       padding: const EdgeInsets.all(24),

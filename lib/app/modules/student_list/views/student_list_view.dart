@@ -19,7 +19,7 @@ class StudentListView extends GetView<StudentListController> {
           onPressed: () => Get.back(),
         ),
       ),
-      // TOMBOL TAMBAH (+) MENGAMBANG
+      
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddStudentDialog(context),
         backgroundColor: Colors.orange,
@@ -29,12 +29,12 @@ class StudentListView extends GetView<StudentListController> {
       body: StreamBuilder<QuerySnapshot>(
         stream: controller.studentsStream,
         builder: (context, snapshot) {
-          // 1. Loading State
+          
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          // 2. Empty State (Kalau belum ada data)
+          
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
             return Center(
               child: Column(
@@ -48,7 +48,7 @@ class StudentListView extends GetView<StudentListController> {
             );
           }
 
-          // 3. List Data Siswa
+          
           var documents = snapshot.data!.docs;
           
           return ListView.builder(
@@ -66,7 +66,7 @@ class StudentListView extends GetView<StudentListController> {
     );
   }
 
-  // WIDGET KARTU SISWA
+  
   Widget _buildStudentCard(Map<String, dynamic> data, String docId) {
     bool isLaki = data['jenis_kelamin'] == 'L';
     
@@ -118,7 +118,7 @@ class StudentListView extends GetView<StudentListController> {
     );
   }
 
-  // DIALOG FORM TAMBAH SISWA
+  
   void _showAddStudentDialog(BuildContext context) {
     Get.bottomSheet(
       Container(
@@ -153,7 +153,7 @@ class StudentListView extends GetView<StudentListController> {
               ),
               const SizedBox(height: 15),
 
-              // Pilihan Gender (Radio Button Custom)
+              
               const Text("Jenis Kelamin:", style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 10),
               Obx(() => Row(
@@ -183,7 +183,7 @@ class StudentListView extends GetView<StudentListController> {
           ),
         ),
       ),
-      isScrollControlled: true, // Biar gak ketutup keyboard
+      isScrollControlled: true, 
     );
   }
 
