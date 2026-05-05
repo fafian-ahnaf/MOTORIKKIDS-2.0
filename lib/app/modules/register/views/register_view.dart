@@ -98,7 +98,7 @@ class RegisterView extends GetView<RegisterController> {
 
                           // --- TEKS SAMBUTAN ---
                           Text(
-                            "Halo Teman Baru!", 
+                            "Daftar Akun Baru!", 
                             textAlign: TextAlign.center,
                             style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: teksGelap)
                           ),
@@ -111,7 +111,7 @@ class RegisterView extends GetView<RegisterController> {
                           const SizedBox(height: 40),
 
                           // --- FORM PENGISIAN ---
-                          _buildLabel("Siapa Namamu?"),
+                          _buildLabel("Nama Lengkap"),
                           _buildTextField(controller: controller.nameC, hint: "Nama Lengkap", icon: Icons.person_rounded),
                           const SizedBox(height: 20),
 
@@ -174,7 +174,7 @@ class RegisterView extends GetView<RegisterController> {
                               return Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  _buildLabel("Ananda yang mana?"),
+                                  _buildLabel("Nama Anak"),
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
                                     decoration: BoxDecoration(
@@ -234,7 +234,7 @@ class RegisterView extends GetView<RegisterController> {
                               Text("Sudah punya akun?", style: TextStyle(fontWeight: FontWeight.w700, color: Colors.grey.shade600)),
                               TextButton(
                                 onPressed: () => Get.back(), 
-                                child: Text("Masuk yuk!", style: TextStyle(fontWeight: FontWeight.w900, color: controller.themeColor, fontSize: 16)),
+                                child: Text("Masuk", style: TextStyle(fontWeight: FontWeight.w900, color: controller.themeColor, fontSize: 16)),
                               ),
                             ],
                           ),

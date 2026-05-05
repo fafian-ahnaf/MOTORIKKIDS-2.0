@@ -135,7 +135,7 @@ class WelcomeView extends GetView<WelcomeController> {
                     // --- TOMBOL PILIHAN PERAN (BUBBLY STYLE) ---
                     _buildRoleCard(
                       context,
-                      title: "Saya Guru 👩‍🏫",
+                      title: "Guru 👩‍🏫",
                       subtitle: "Catat observasi & kelola siswa",
                       imagePath: "assets/guru.png", // Pastikan gambar ini ada
                       primaryColor: orenJeruk,
@@ -146,8 +146,8 @@ class WelcomeView extends GetView<WelcomeController> {
 
                     _buildRoleCard(
                       context,
-                      title: "Saya Orang Tua 👨‍👩‍👧",
-                      subtitle: "Lihat hasil belajar Ananda",
+                      title: "Orang Tua 👨‍👩‍👧",
+                      subtitle: "Lihat hasil belajar Anak",
                       imagePath: "assets/orang tua.png", // Pastikan gambar ini ada
                       primaryColor: biruAwan,
                       onTap: () => Get.toNamed(Routes.LOGIN, arguments: {'role': 'parent'}),

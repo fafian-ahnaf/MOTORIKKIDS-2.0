@@ -29,27 +29,29 @@ environment:
 # versions available, run `flutter pub outdated`.
 dependencies:
   cloud_firestore: ^6.1.2
+  csv: ^8.0.0
   cupertino_icons: ^1.0.8
+  file_selector: ^1.1.0
   firebase_auth: ^6.1.4
   firebase_core: ^4.4.0
   flutter:
     sdk: flutter
   flutter_dotenv: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
   get: ^4.7.3
   google_generative_ai: ^0.4.7
   http: ^1.6.0
   intl: ^0.20.2
+  path_provider: ^2.1.5
+  pdf: ^3.12.0
+  printing: ^5.14.3
+  share_plus: ^12.0.2
 
 dev_dependencies:
-
-  # The "flutter_lints" package below contains a set of recommended lints to
-  # encourage good coding practices. The lint set provided by the package is
-  # activated in the `analysis_options.yaml` file located at the root of your
-  # package. See that file for information about deactivating specific lint
-  # rules and activating additional ones.
   flutter_lints: ^6.0.0
   flutter_test:
     sdk: flutter
+  flutter_launcher_icons: ^0.14.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -88,3 +90,8 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icon/icon.png"
+  min_sdk_android: 21

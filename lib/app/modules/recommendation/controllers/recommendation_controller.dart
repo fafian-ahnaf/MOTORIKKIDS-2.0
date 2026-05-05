@@ -49,7 +49,9 @@ class RecommendationController extends GetxController {
     try {
       String teksObservasi = _generateObservationText(_currentFineScore, _currentGrossScore);
 
-      final String apiUrl = "http://192.168.1.9:5000/predict"; 
+      // ✔️ SUDAH DIPERBAIKI: Menggunakan http:// dan tidak ada spasi
+      final String apiUrl = "192.168.141.115:5000/predict";
+      
       final response = await http.post(
         Uri.parse(apiUrl),
         headers: {"Content-Type": "application/json"},
@@ -65,8 +67,11 @@ class RecommendationController extends GetxController {
         throw "Server Error: ${response.statusCode}";
       }
     } catch (e) {
-      Get.snackbar("Kendala Koneksi", "Gagal terhubung ke API IndoBERT: $e", 
-        backgroundColor: Colors.red.shade100);
+      // ✔️ SUDAH DIPERBAIKI: Snackbar dibungkus Future.delayed agar layar tidak merah
+      Future.delayed(const Duration(milliseconds: 500), () {
+        Get.snackbar("Kendala Koneksi", "Gagal terhubung ke API IndoBERT: $e", 
+          backgroundColor: Colors.red.shade100);
+      });
     } finally {
       isLoading.value = false;
     }
@@ -147,7 +152,10 @@ class RecommendationController extends GetxController {
           };
         }
       } catch (e) {
-        Get.snackbar("Error", "Gagal mengambil data saran: $e");
+        // ✔️ SUDAH DIPERBAIKI
+        Future.delayed(const Duration(milliseconds: 500), () {
+          Get.snackbar("Error", "Gagal mengambil data saran: $e");
+        });
       }
     }
     isLoading.value = false;
@@ -167,15 +175,21 @@ class RecommendationController extends GetxController {
         });
 
         Get.back();
-        Get.snackbar(
-          "Hebat! 🎉", 
-          "Saran aktivitas berhasil disimpan ke jurnal Ananda!", 
-          backgroundColor: Colors.green.shade400, 
-          colorText: Colors.white,
-          snackPosition: SnackPosition.TOP
-        ); 
+        // ✔️ SUDAH DIPERBAIKI
+        Future.delayed(const Duration(milliseconds: 500), () {
+          Get.snackbar(
+            "Hebat! 🎉", 
+            "Saran aktivitas berhasil disimpan ke jurnal Ananda!", 
+            backgroundColor: Colors.green.shade400, 
+            colorText: Colors.white,
+            snackPosition: SnackPosition.TOP
+          ); 
+        });
       } catch (e) {
-        Get.snackbar("Gagal", "Yaaah, gagal menyimpan data: $e");
+        // ✔️ SUDAH DIPERBAIKI
+        Future.delayed(const Duration(milliseconds: 500), () {
+          Get.snackbar("Gagal", "Yaaah, gagal menyimpan data: $e");
+        });
       }
     } else {
       Get.back(); 

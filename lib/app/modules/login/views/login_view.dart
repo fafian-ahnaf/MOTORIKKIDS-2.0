@@ -4,6 +4,9 @@ import 'package:get/get.dart';
 import '../controllers/login_controller.dart';
 import '../../../routes/app_pages.dart';
 
+// MENG-IMPORT HALAMAN LUPA PASSWORD YANG BARU DIBUAT
+import 'forgot_password_view.dart';
+
 class LoginView extends GetView<LoginController> {
   const LoginView({Key? key}) : super(key: key);
 
@@ -35,7 +38,6 @@ class LoginView extends GetView<LoginController> {
                 // ============================================================
                 // --- BACKGROUND DEKORASI ---
                 // ============================================================
-                // Menggunakan getter/variabel biasa untuk warna tema agar tidak error Obx
                 Positioned(
                   top: -80,
                   left: -50,
@@ -97,9 +99,9 @@ class LoginView extends GetView<LoginController> {
                         
                         // --- TEKS SAMBUTAN ---
                         Text(
-                          "Halo, ${controller.roleLabel}! 👋",
+                          "Assalamualaikum, ${controller.roleLabel}! 👋",
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: teksGelap),
+                          style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: teksGelap),
                         ),
                         const SizedBox(height: 8),
                         Text(
@@ -131,11 +133,18 @@ class LoginView extends GetView<LoginController> {
                           ),
                         )),
 
+                        // --- TOMBOL LUPA KATA SANDI (SUDAH TERHUBUNG) ---
                         Align(
                           alignment: Alignment.centerRight,
                           child: TextButton(
-                            onPressed: () {}, 
-                            child: Text("Lupa Kata Sandi?", style: TextStyle(color: orenJeruk, fontWeight: FontWeight.w900)),
+                            onPressed: () {
+                              // Navigasi ke halaman lupa kata sandi
+                              Get.to(() => ForgotPasswordView());
+                            }, 
+                            child: Text(
+                              "Lupa Kata Sandi?", 
+                              style: TextStyle(color: orenJeruk, fontWeight: FontWeight.w900)
+                            ),
                           ),
                         ),
                         const SizedBox(height: 10),
@@ -169,7 +178,7 @@ class LoginView extends GetView<LoginController> {
                               Text("Belum punya akun? ", style: TextStyle(color: teksGelap.withOpacity(0.6), fontWeight: FontWeight.w700)),
                               GestureDetector(
                                 onTap: () => controller.goToRegister(),
-                                child: Text("Daftar disini", style: TextStyle(color: controller.themeColor, fontWeight: FontWeight.w900, fontSize: 15)),
+                                child: Text("Daftar Disini", style: TextStyle(color: controller.themeColor, fontWeight: FontWeight.w900, fontSize: 15)),
                               ),
                             ],
                           ),
