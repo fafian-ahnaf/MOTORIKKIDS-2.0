@@ -50,7 +50,7 @@ class RecommendationController extends GetxController {
       String teksObservasi = _generateObservationText(_currentFineScore, _currentGrossScore);
 
       // ✔️ SUDAH DIPERBAIKI: Menggunakan http:// dan tidak ada spasi
-      final String apiUrl = "192.168.141.115:5000/predict";
+      final String apiUrl = "http://192.168.48.159:5000/predict";
       
       final response = await http.post(
         Uri.parse(apiUrl),
