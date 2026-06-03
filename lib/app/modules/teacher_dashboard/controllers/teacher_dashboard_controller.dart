@@ -1,8 +1,11 @@
+import 'dart:convert'; 
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'dart:math';
+import 'package:http/http.dart' as http; 
 
 // --- LIBRARY UNTUK FILE, PDF & SHARE ---
 import 'package:file_selector/file_selector.dart';
@@ -30,10 +33,11 @@ class TeacherDashboardController extends GetxController {
   var selectedGender = 'Laki-laki'.obs; 
 
   // ==========================================================
-  // VARIABEL UNTUK FITUR HAPUS BANYAK (MULTI-DELETE)
+  // VARIABEL UNTUK FITUR HAPUS BANYAK (MULTI-DELETE) & OBSERVASI
   // ==========================================================
   RxBool isSelectionMode = false.obs;
   RxList<String> selectedIds = <String>[].obs;
+  final observasiKelompokC = TextEditingController(); // <-- Input Observasi Kelompok
 
   @override
   void onInit() {
@@ -92,6 +96,12 @@ class TeacherDashboardController extends GetxController {
     if (hour < 15) return "Selamat Siang";
     if (hour < 18) return "Selamat Sore";
     return "Selamat Malam";
+  }
+
+  String generateToken() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    Random rnd = Random();
+    return String.fromCharCodes(Iterable.generate(6, (_) => chars.codeUnitAt(rnd.nextInt(chars.length))));
   }
 
   void resetForm() {
@@ -168,7 +178,109 @@ class TeacherDashboardController extends GetxController {
   }
 
   // ==========================================================
-  // FITUR 1: IMPORT CSV (BACA SESUAI TEMPLATE ANDA & ANTI-DUPLIKAT)
+  // FITUR BARU: OBSERVASI KELOMPOK (MULTI-SELECT NLP)
+  // ==========================================================
+  void submitGroupObservation() async {
+    if (observasiKelompokC.text.trim().isEmpty) {
+      Get.snackbar("Info", "Teks observasi tidak boleh kosong!", backgroundColor: Colors.orange.shade100);
+      return;
+    }
+
+    try {
+      isLoading.value = true;
+      String teksObservasi = observasiKelompokC.text.trim();
+
+      // 1. Tembak API IndoBERT (Satu kali saja untuk semua anak terpilih)
+      final String apiUrl = "http://192.168.141.60:5000/predict";
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"teks": teksObservasi}),
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        String statusPrediksi = data['data']['prediksi_status'] ?? "BSH"; 
+
+        // 2. Simpan hasil ke semua anak yang dicentang secara bersamaan (Batch)
+        WriteBatch batch = firestore.batch();
+        String tanggalSekarang = DateTime.now().toIso8601String();
+
+        for (String id in selectedIds) {
+          DocumentReference studentRef = firestore.collection('students').doc(id);
+          batch.update(studentRef, {'status': statusPrediksi});
+
+          DocumentReference riwayatRef = studentRef.collection('riwayat').doc();
+          batch.set(riwayatRef, {
+            'activity': 'Observasi Kelompok',
+            'notes': teksObservasi,
+            'score': statusPrediksi,
+            'date': tanggalSekarang,
+          });
+        }
+
+        await batch.commit();
+
+        observasiKelompokC.clear();
+        toggleSelectionMode(); 
+        Get.back(); // Tutup pop-up
+
+        Get.snackbar("Berhasil! 🎉", "Observasi kelompok berhasil diproses oleh IndoBERT dan disimpan ke ${selectedIds.length} anak.", 
+          backgroundColor: Colors.green.shade400, colorText: Colors.white, duration: const Duration(seconds: 4));
+
+      } else {
+        throw "API Error: ${response.statusCode}";
+      }
+    } catch (e) {
+      Get.snackbar("Gagal", "Terjadi kesalahan API IndoBERT: $e", backgroundColor: Colors.red.shade100);
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  void showGroupObservationDialog(BuildContext context) {
+    Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text("Observasi Kelompok 👥", style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Colors.blue.shade800)),
+              const SizedBox(height: 8),
+              Text("Input observasi untuk ${selectedIds.length} anak sekaligus. AI akan memprosesnya otomatis.", style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: observasiKelompokC,
+                maxLines: 4,
+                decoration: InputDecoration(
+                  hintText: "Contoh: Anak-anak hari ini belajar melompat rintangan, namun masih ada yang sering terjatuh...",
+                  filled: true, fillColor: Colors.blue.shade50,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Obx(() => SizedBox(
+                width: double.infinity, height: 50,
+                child: ElevatedButton(
+                  onPressed: isLoading.value ? null : () => submitGroupObservation(),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade600, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+                  child: isLoading.value 
+                      ? const CircularProgressIndicator(color: Colors.white) 
+                      : const Text("Proses data", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ))
+            ],
+          ),
+        ),
+      )
+    );
+  }
+
+  // ==========================================================
+  // FITUR 1: IMPORT CSV
   // ==========================================================
   void importCSV() async {
     try {
@@ -206,7 +318,6 @@ class TeacherDashboardController extends GetxController {
         }
 
         for (int i = 1; i < barisData.length; i++) {
-          // Tetap menggunakan regex agar mendukung koma (,) sesuai template Anda, maupun titik koma (;)
           List<String> kolom = barisData[i].trim().split(RegExp(r'[,;]'));
           
           if (kolom.length < 4) continue; 
@@ -234,11 +345,18 @@ class TeacherDashboardController extends GetxController {
           if (months < 0) { years--; months += 12; }
           String calculatedAge = (months > 0) ? "$years Thn $months Bln" : "$years Tahun";
 
+          String tokenBaruCsv = generateToken(); 
+
           batch.set(firestore.collection('students').doc(), {
             'teacherId': user?.uid,
-            'name': name, 'kelas': kelas, 'gender': gender,
-            'birthDate': birthDate.toIso8601String(), 'age': calculatedAge,
-            'status': 'Belum Dinilai', 'createdAt': DateTime.now().toIso8601String(),
+            'name': name, 
+            'kelas': kelas, 
+            'gender': gender,
+            'birthDate': birthDate.toIso8601String(), 
+            'age': calculatedAge,
+            'status': 'Belum Dinilai', 
+            'createdAt': DateTime.now().toIso8601String(),
+            'token_ortu': tokenBaruCsv, 
           });
           countAdded++; 
         }
@@ -267,13 +385,12 @@ class TeacherDashboardController extends GetxController {
   }
 
   // ==========================================================
-  // FITUR 2: UNDUH TEMPLATE CSV (MENGIKUTI FORMAT TEMPLATE ANDA)
+  // FITUR 2: UNDUH TEMPLATE CSV
   // ==========================================================
   void downloadTemplateCSV() async {
     try {
       isLoading.value = true;
       
-      // Data template disamakan persis 100% dengan data_siswa_paud.csv milik Anda
       String templateData = "Nama,Kelas,Gender,Tanggal Lahir\nBudi Santoso,TK A,Laki-laki,2021-03-15\nSiti Aminah,TK A,Perempuan,2021-05-20\n";
 
       if (Platform.isAndroid) {
@@ -335,30 +452,35 @@ class TeacherDashboardController extends GetxController {
       final pdf = pw.Document();
       final dataSiswa = studentsStream.toList();
       
-      final headers = ['No', 'Nama Anak', 'Kelas', 'L/P', 'Umur', 'Status Motorik'];
+      final headers = ['No', 'Nama Anak', 'Kelas', 'L/P', 'Umur', 'Token Ortu', 'Status'];
       final tableData = <List<String>>[];
 
       for (int i = 0; i < dataSiswa.length; i++) {
         final s = dataSiswa[i];
+        
+        bool isLinked = s['parent_id'] != null && s['parent_id'].toString().isNotEmpty;
+        String tokenTampil = isLinked ? 'Terhubung' : (s['token_ortu'] ?? '-');
+
         tableData.add([
           (i + 1).toString(),
           s['name'] ?? '-',
           s['kelas'] ?? '-',
           s['gender'] == 'Laki-laki' ? 'L' : 'P',
           s['age'] ?? '-',
+          tokenTampil, 
           s['status'] ?? '-',
         ]);
       }
 
       pdf.addPage(
         pw.Page(
-          pageFormat: PdfPageFormat.a4,
+          pageFormat: PdfPageFormat.a4.landscape, 
           margin: const pw.EdgeInsets.all(32),
           build: (pw.Context context) {
             return pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                pw.Text('Daftar Anak Didik - MotorikKids', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
+                pw.Text('Daftar Anak Didik & Token - MotorikKids', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
                 pw.SizedBox(height: 5),
                 pw.Text('Tanggal Export: ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}'),
                 pw.SizedBox(height: 20),
@@ -385,19 +507,26 @@ class TeacherDashboardController extends GetxController {
       Get.snackbar("Error", "Gagal export PDF: $e", backgroundColor: Colors.red, colorText: Colors.white);
     }
   }
-
+  
   // --- FUNGSI TAMBAH MANUAL & LAINNYA ---
   void addStudent() async {
     if (_validateForm()) {
       try {
         isLoading.value = true;
         User? user = auth.currentUser;
+        
+        String tokenBaru = generateToken(); 
+
         await firestore.collection('students').add({
           'teacherId': user?.uid,
-          'name': nameC.text, 'age': ageText.value,
+          'name': nameC.text, 
+          'age': ageText.value,
           'birthDate': selectedBirthDate.value?.toIso8601String(),
-          'kelas': selectedKelas.value, 'gender': selectedGender.value, 
-          'status': 'Belum Dinilai', 'createdAt': DateTime.now().toIso8601String(),
+          'kelas': selectedKelas.value, 
+          'gender': selectedGender.value, 
+          'status': 'Belum Dinilai', 
+          'createdAt': DateTime.now().toIso8601String(),
+          'token_ortu': tokenBaru, 
         });
         _finishAction("Data siswa berhasil disimpan");
       } catch (e) { _handleError(e); }
@@ -475,5 +604,9 @@ class TeacherDashboardController extends GetxController {
   }
 
   @override
-  void onClose() { nameC.dispose(); super.onClose(); }
+  void onClose() { 
+    nameC.dispose(); 
+    observasiKelompokC.dispose(); // <-- Dispose input baru
+    super.onClose(); 
+  }
 }

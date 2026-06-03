@@ -6,7 +6,6 @@ import '../controllers/recommendation_controller.dart';
 class RecommendationView extends GetView<RecommendationController> {
   const RecommendationView({super.key});
 
-  // --- PALET WARNA CERIA ---
   final Color bgBase = const Color(0xFFFFF8E7); 
   final Color pinkCeria = const Color(0xFFFF7E95); 
   final Color biruAwan = const Color(0xFF4FC3F7); 
@@ -49,9 +48,6 @@ class RecommendationView extends GetView<RecommendationController> {
       
       body: Stack(
         children: [
-          // ============================================================
-          // --- BACKGROUND BARU: POLA BALON & AWAN ---
-          // ============================================================
           Container(color: bgBase),
           
           Positioned(
@@ -64,9 +60,6 @@ class RecommendationView extends GetView<RecommendationController> {
           
           _buildBalloonBackgroundPattern(),
 
-          // ============================================================
-          // --- KONTEN UTAMA ---
-          // ============================================================
           SafeArea(
             child: Obx(() {
               if (controller.isLoading.value) {
@@ -76,7 +69,7 @@ class RecommendationView extends GetView<RecommendationController> {
                     children: [
                       CircularProgressIndicator(color: orenJeruk, strokeWidth: 6),
                       const SizedBox(height: 24),
-                      Text("Sedang meracik ide\nbermain yang seru... 🎈", 
+                      Text("Sedang memuat data... 🎈", 
                         textAlign: TextAlign.center,
                         style: TextStyle(color: teksGelap, fontWeight: FontWeight.w900, fontSize: 16)
                       ),
@@ -94,7 +87,7 @@ class RecommendationView extends GetView<RecommendationController> {
               return Stack(
                 children: [
                   SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(24, 20, 24, 120), // Padding bawah diperbesar untuk tombol
+                    padding: const EdgeInsets.fromLTRB(24, 20, 24, 120), 
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -105,9 +98,8 @@ class RecommendationView extends GetView<RecommendationController> {
                           style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: teksGelap)),
                         const SizedBox(height: 16),
 
-                        // KARTU INFO (TUJUAN & CARA) - IKON ANAK-ANAK
                         _buildInfoCard(
-                          icon: Icons.rocket_launch_rounded, // Roket untuk tujuan
+                          icon: Icons.rocket_launch_rounded, 
                           color: orenJeruk,
                           title: "Tujuan Bermain 🎯",
                           content: data['tujuan'] ?? "-",
@@ -115,19 +107,18 @@ class RecommendationView extends GetView<RecommendationController> {
                         const SizedBox(height: 16),
 
                         _buildInfoCard(
-                          icon: Icons.toys_rounded, // Mainan untuk cara bermain
+                          icon: Icons.toys_rounded, 
                           color: pinkCeria,
                           title: "Cara Bermainnya 🧩",
                           content: data['cara'] ?? "-",
                         ),
                         const SizedBox(height: 16),
 
-                        // ROW INFO DURASI & LOKASI
                         Row(
                           children: [
                             Expanded(
                               child: _buildSmallDetailCard(
-                                icon: Icons.hourglass_bottom_rounded, // Jam Pasir
+                                icon: Icons.hourglass_bottom_rounded, 
                                 color: Colors.purple.shade400,
                                 label: "Waktu Main ⏳",
                                 value: data['durasi'] ?? "-",
@@ -136,7 +127,7 @@ class RecommendationView extends GetView<RecommendationController> {
                             const SizedBox(width: 16),
                             Expanded(
                               child: _buildSmallDetailCard(
-                                icon: Icons.castle_rounded, // Kastil / Istana Mainan
+                                icon: Icons.castle_rounded, 
                                 color: Colors.green.shade400,
                                 label: "Lokasi 🏰",
                                 value: data['lokasi'] ?? "-",
@@ -144,11 +135,102 @@ class RecommendationView extends GetView<RecommendationController> {
                             ),
                           ],
                         ),
+
+                        const SizedBox(height: 32),
+                        
+                        // ============================================================
+                        // --- WIDGET KHUSUS ORANG TUA: CHECKLIST & FEEDBACK ---
+                        // ============================================================
+                        if (controller.role == 'parent')
+                          Obx(() {
+                            if (controller.isDoneByParent.value) {
+                              // TAMPILAN JIKA SUDAH SELESAI
+                              return Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.shade50,
+                                  borderRadius: BorderRadius.circular(24),
+                                  border: Border.all(color: Colors.green.shade300, width: 2),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(Icons.check_circle_rounded, color: Colors.green.shade600, size: 28),
+                                        const SizedBox(width: 8),
+                                        Expanded(child: Text("Aktivitas Selesai! 🎉", style: TextStyle(color: Colors.green.shade700, fontWeight: FontWeight.w900, fontSize: 18))),
+                                      ],
+                                    ),
+                                    if (controller.parentFeedbackText.value.isNotEmpty) ...[
+                                      const SizedBox(height: 12),
+                                      const Divider(color: Colors.green),
+                                      const SizedBox(height: 8),
+                                      Text("Catatan Bunda/Ayah:", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.green.shade800)),
+                                      const SizedBox(height: 4),
+                                      Text('"${controller.parentFeedbackText.value}"', style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic, color: Colors.green.shade900)),
+                                    ]
+                                  ],
+                                ),
+                              );
+                            } else {
+                              // TAMPILAN JIKA BELUM SELESAI
+                              return Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(24),
+                                  border: Border.all(color: orenJeruk.withOpacity(0.5), width: 2),
+                                  boxShadow: [BoxShadow(color: orenJeruk.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text("Sudah Bermain Bersama? 🌟", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: teksGelap)),
+                                    const SizedBox(height: 8),
+                                    Text("Tuliskan respon atau kendala ananda saat melakukan aktivitas ini (Opsional):", style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w600, height: 1.5)),
+                                    const SizedBox(height: 12),
+                                    TextField(
+                                      controller: controller.feedbackC,
+                                      maxLines: 3,
+                                      decoration: InputDecoration(
+                                        hintText: "Contoh: Ananda sangat senang dan bisa melompat dengan baik...",
+                                        hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+                                        filled: true,
+                                        fillColor: bgBase,
+                                        contentPadding: const EdgeInsets.all(16),
+                                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Colors.transparent)),
+                                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: orenJeruk, width: 2)),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      height: 50,
+                                      child: ElevatedButton.icon(
+                                        onPressed: () => controller.submitParentFeedback(),
+                                        icon: const Icon(Icons.check_circle_outline_rounded, color: Colors.white),
+                                        label: const Text("Tandai Selesai!", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.green.shade400,
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                          elevation: 0,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+                          }),
+                        // ============================================================
                       ],
                     ),
                   ),
 
-                  // --- TOMBOL SIMPAN MELAYANG ---
+                  // --- TOMBOL SIMPAN MELAYANG (KHUSUS GURU) ---
                   if (controller.role != 'parent')
                     Positioned(
                       left: 24, right: 24, bottom: 24,
@@ -170,9 +252,9 @@ class RecommendationView extends GetView<RecommendationController> {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: const [
-                                Icon(Icons.favorite_rounded, color: Colors.white, size: 28), // Hati untuk menyimpan
+                                Icon(Icons.favorite_rounded, color: Colors.white, size: 28), 
                                 SizedBox(width: 12),
-                                Text("Simpan ke Jurnal!", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                                Text("Simpan & Kirim ke Ortu", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
                               ],
                             ),
                           ),
@@ -188,9 +270,6 @@ class RecommendationView extends GetView<RecommendationController> {
     );
   }
 
-  // ==============================================================
-  // WIDGET BARU UNTUK BACKGROUND BALON
-  // ==============================================================
   Widget _buildBalloonBackgroundPattern() {
     return Stack(
       children: [
@@ -207,10 +286,6 @@ class RecommendationView extends GetView<RecommendationController> {
     );
   }
 
-  // ==============================================================
-  // WIDGET KOMPONEN
-  // ==============================================================
-
   Widget _buildHeaderCard(Map<String, String> data) {
     return Container(
       width: double.infinity,
@@ -226,7 +301,7 @@ class RecommendationView extends GetView<RecommendationController> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(color: biruAwan.withOpacity(0.15), shape: BoxShape.circle),
-            child: Icon(Icons.child_care_rounded, color: biruAwan, size: 45), // Ikon Wajah Anak
+            child: Icon(Icons.child_care_rounded, color: biruAwan, size: 45), 
           ),
           const SizedBox(height: 16),
           Text(data['title'] ?? "-", 
@@ -259,7 +334,7 @@ class RecommendationView extends GetView<RecommendationController> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(color: color.withOpacity(0.15), shape: BoxShape.circle),
-                child: Icon(icon, color: color, size: 24), // Ukuran ikon sedikit diperbesar
+                child: Icon(icon, color: color, size: 24), 
               ),
               const SizedBox(width: 12),
               Expanded(child: Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: color))),
@@ -284,7 +359,7 @@ class RecommendationView extends GetView<RecommendationController> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 28), // Ukuran ikon sedikit diperbesar
+          Icon(icon, color: color, size: 28), 
           const SizedBox(height: 12),
           Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: teksGelap.withOpacity(0.6))),
           const SizedBox(height: 4),
@@ -312,7 +387,7 @@ class RecommendationView extends GetView<RecommendationController> {
                 shape: BoxShape.circle,
                 boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 15)]
               ),
-              child: Icon(Icons.sentiment_satisfied_alt_rounded, size: 60, color: Colors.grey.shade400), // Wajah tersenyum
+              child: Icon(Icons.sentiment_satisfied_alt_rounded, size: 60, color: Colors.grey.shade400), 
             ),
             const SizedBox(height: 20),
             Text("Belum Ada Saran 🌱", 

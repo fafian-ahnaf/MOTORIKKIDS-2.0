@@ -6,31 +6,24 @@ import 'package:intl/intl.dart';
 class StudentDetailController extends GetxController {
   FirebaseFirestore firestore = FirebaseFirestore.instance;
 
-  
   late String studentId;
   var studentName = "".obs;
   var studentAge = "".obs; 
   
-  
   final activityNameC = TextEditingController();
   final notesC = TextEditingController();
-  
   
   var selectedTab = 0.obs; 
   var selectedMotorikType = 'Halus'.obs;
   var inputScore = 75.0.obs; 
   var isLoading = false.obs;
 
-  
-  
-  
   var fineMotorScore = 0.0.obs; 
   var grossMotorScore = 0.0.obs; 
   var fineMotorSum = 0.0.obs;   
   var grossMotorSum = 0.0.obs;  
   var currentStatus = "-".obs;
 
-  
   var assessmentHistory = <Map<String, dynamic>>[].obs;   
   var recommendationHistory = <Map<String, dynamic>>[].obs; 
 
@@ -51,18 +44,23 @@ class StudentDetailController extends GetxController {
     }
   }
 
-
   void monitorStudentData() {
     firestore.collection('students').doc(studentId).snapshots().listen((snapshot) {
       if (snapshot.exists) {
         var data = snapshot.data();
         
+        // --- PERBAIKAN ERROR LIST UNMODIFIABLE ---
+        List<dynamic> rawHistory = data?['riwayat'] ?? [];
         
-        List<dynamic> history = data?['riwayat'] ?? [];
-        history.sort((a, b) => b['date'].compareTo(a['date'])); // Terbaru diatas
-        assessmentHistory.value = history.map((e) => e as Map<String, dynamic>).toList();
+        // Kita ubah list mentah menjadi List baru yang bisa dimodifikasi/di-sort
+        List<Map<String, dynamic>> history = rawHistory.map((e) => Map<String, dynamic>.from(e)).toList();
+        
+        // Barulah kita urutkan dengan aman (Terbaru di atas)
+        history.sort((a, b) => (b['date'] ?? "").compareTo(a['date'] ?? "")); 
+        
+        assessmentHistory.value = history;
+        // -----------------------------------------
 
-        
         double totalFine = 0;
         double totalGross = 0;
         int countFine = 0;
@@ -79,22 +77,20 @@ class StudentDetailController extends GetxController {
           }
         }
 
-        
         fineMotorSum.value = totalFine;
         grossMotorSum.value = totalGross;
 
-
         fineMotorScore.value = countFine == 0 ? 0.0 : (totalFine / countFine) / 100;
         grossMotorScore.value = countGross == 0 ? 0.0 : (totalGross / countGross) / 100;
-        
         
         if (data?['status'] != null) {
           currentStatus.value = data!['status'];
         }
       }
+    }, onError: (e) {
+      debugPrint("Error memantau data: $e");
     });
   }
-
 
   void monitorRecommendations() {
     firestore
@@ -112,7 +108,6 @@ class StudentDetailController extends GetxController {
     });
   }
 
-
   void addAssessment() async {
     if (activityNameC.text.isNotEmpty && studentId.isNotEmpty) {
       _saveToFirebase(
@@ -129,7 +124,6 @@ class StudentDetailController extends GetxController {
     }
   }
 
-  
   void updateAssessment(Map<String, dynamic> oldData) async {
     if (activityNameC.text.isNotEmpty) {
       Map<String, dynamic> newData = {
@@ -144,11 +138,9 @@ class StudentDetailController extends GetxController {
         isLoading.value = true;
         var docRef = firestore.collection('students').doc(studentId);
         
-
         await docRef.update({'riwayat': FieldValue.arrayRemove([oldData])});
         await docRef.update({'riwayat': FieldValue.arrayUnion([newData])});
 
-        
         await _recalculateGlobalStatus(docRef);
 
         isLoading.value = false;
@@ -162,18 +154,15 @@ class StudentDetailController extends GetxController {
     }
   }
 
-  
   void _saveToFirebase({required Map<String, dynamic> newLog}) async {
     try {
       isLoading.value = true;
       var docRef = firestore.collection('students').doc(studentId);
 
-      
       await docRef.update({
         'riwayat': FieldValue.arrayUnion([newLog]),
       });
 
-      
       await _recalculateGlobalStatus(docRef);
 
       isLoading.value = false;
@@ -191,7 +180,6 @@ class StudentDetailController extends GetxController {
     if (inputScore.value >= 85) newStatus = "Sangat Baik";
     else if (inputScore.value >= 70) newStatus = "Baik";
     else if (inputScore.value >= 55) newStatus = "Cukup";
-    
     
     await docRef.update({'status': newStatus});
   }

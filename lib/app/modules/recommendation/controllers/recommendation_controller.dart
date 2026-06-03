@@ -17,6 +17,14 @@ class RecommendationController extends GetxController {
   String? studentId;
   String role = ''; 
 
+  // =========================================================
+  // VARIABEL BARU KHUSUS FITUR ORANG TUA (CHECKLIST & FEEDBACK)
+  // =========================================================
+  var recommendationDocId = "".obs; 
+  var isDoneByParent = false.obs;
+  var parentFeedbackText = "".obs;
+  final feedbackC = TextEditingController(); 
+
   @override
   void onInit() {
     super.onInit();
@@ -35,7 +43,6 @@ class RecommendationController extends GetxController {
     }
   }
 
-  // Teks observasi untuk dilempar ke API
   String _generateObservationText(double fine, double gross) {
     String fineStatus = fine >= 75 ? "sudah baik" : "perlu dilatih lagi";
     String grossStatus = gross >= 75 ? "sudah sangat aktif" : "masih kaku";
@@ -48,9 +55,7 @@ class RecommendationController extends GetxController {
     
     try {
       String teksObservasi = _generateObservationText(_currentFineScore, _currentGrossScore);
-
-      // ✔️ SUDAH DIPERBAIKI: Menggunakan http:// dan tidak ada spasi
-      final String apiUrl = "http://192.168.48.159:5000/predict";
+      final String apiUrl = "http://192.168.141.60:5000/predict";
       
       final response = await http.post(
         Uri.parse(apiUrl),
@@ -61,13 +66,11 @@ class RecommendationController extends GetxController {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         String statusNLP = data['data']['prediksi_status'] ?? "BSH"; 
-
         recommendationData.value = _mapStatusToActivity(statusNLP);
       } else {
         throw "Server Error: ${response.statusCode}";
       }
     } catch (e) {
-      // ✔️ SUDAH DIPERBAIKI: Snackbar dibungkus Future.delayed agar layar tidak merah
       Future.delayed(const Duration(milliseconds: 500), () {
         Get.snackbar("Kendala Koneksi", "Gagal terhubung ke API IndoBERT: $e", 
           backgroundColor: Colors.red.shade100);
@@ -77,7 +80,6 @@ class RecommendationController extends GetxController {
     }
   }
 
-  // --- BAHASA REKOMENDASI YANG LEBIH PAUD FRIENDLY ---
   Map<String, String> _mapStatusToActivity(String status) {
     if (status == "BB") {
       return {
@@ -107,7 +109,6 @@ class RecommendationController extends GetxController {
         "lokasi": "Taman Bermain / Luar Ruangan",
       };
     } else { 
-      // BSB
       return {
         "title": "Tantangan Bintang Cilik! 🌟",
         "desc": "Luar biasa! Motorik Ananda berkembang sangat pesat dan melampaui rata-rata. Ia butuh permainan yang menantang.",
@@ -132,7 +133,15 @@ class RecommendationController extends GetxController {
             .get();
 
         if (snapshot.docs.isNotEmpty) {
-          var data = snapshot.docs.first.data();
+          var doc = snapshot.docs.first;
+          var data = doc.data();
+          
+          // --- AMBIL DATA STATUS PENGERJAAN ORANG TUA ---
+          recommendationDocId.value = doc.id;
+          isDoneByParent.value = data['is_done'] ?? false;
+          parentFeedbackText.value = data['parent_feedback'] ?? "";
+          // ----------------------------------------------
+
           recommendationData.value = {
             "title": data['title']?.toString() ?? "",
             "desc": data['desc']?.toString() ?? "",
@@ -152,7 +161,6 @@ class RecommendationController extends GetxController {
           };
         }
       } catch (e) {
-        // ✔️ SUDAH DIPERBAIKI
         Future.delayed(const Duration(milliseconds: 500), () {
           Get.snackbar("Error", "Gagal mengambil data saran: $e");
         });
@@ -161,6 +169,7 @@ class RecommendationController extends GetxController {
     isLoading.value = false;
   }
 
+  // --- FUNGSI GURU: SIMPAN REKOMENDASI (Default is_done = false) ---
   void markAsDone() async {
     if (studentId != null && recommendationData.isNotEmpty) {
       try {
@@ -171,22 +180,21 @@ class RecommendationController extends GetxController {
             .add({
           ...recommendationData, 
           'date': DateTime.now().toIso8601String(), 
-          'isDone': true,
+          'is_done': false, // Menunggu dikerjakan oleh orang tua
+          'parent_feedback': '', // Tempat kosong untuk ulasan orang tua
         });
 
         Get.back();
-        // ✔️ SUDAH DIPERBAIKI
         Future.delayed(const Duration(milliseconds: 500), () {
           Get.snackbar(
             "Hebat! 🎉", 
-            "Saran aktivitas berhasil disimpan ke jurnal Ananda!", 
+            "Saran aktivitas berhasil disimpan dan dikirim ke Orang Tua!", 
             backgroundColor: Colors.green.shade400, 
             colorText: Colors.white,
             snackPosition: SnackPosition.TOP
           ); 
         });
       } catch (e) {
-        // ✔️ SUDAH DIPERBAIKI
         Future.delayed(const Duration(milliseconds: 500), () {
           Get.snackbar("Gagal", "Yaaah, gagal menyimpan data: $e");
         });
@@ -194,5 +202,47 @@ class RecommendationController extends GetxController {
     } else {
       Get.back(); 
     }
+  }
+
+  // --- FUNGSI ORANG TUA: TANDAI SELESAI & KIRIM CATATAN ---
+  void submitParentFeedback() async {
+    if (recommendationDocId.value.isNotEmpty && studentId != null) {
+      try {
+        isLoading.value = true;
+        await firestore
+            .collection('students')
+            .doc(studentId)
+            .collection('recommendations')
+            .doc(recommendationDocId.value)
+            .update({
+          'is_done': true,
+          'parent_feedback': feedbackC.text.trim(),
+          'completed_at': DateTime.now().toIso8601String(),
+        });
+        
+        // Update UI seketika tanpa harus reload
+        isDoneByParent.value = true;
+        parentFeedbackText.value = feedbackC.text.trim();
+        
+        Get.snackbar(
+          "Terima Kasih! 🎉", 
+          "Aktivitas telah ditandai selesai. Guru akan melihat catatan Anda.", 
+          backgroundColor: Colors.green.shade500, 
+          colorText: Colors.white,
+          snackPosition: SnackPosition.TOP,
+          duration: const Duration(seconds: 4),
+        );
+      } catch (e) {
+        Get.snackbar("Gagal", "Terjadi kesalahan saat mengirim: $e", backgroundColor: Colors.red.shade100);
+      } finally {
+        isLoading.value = false;
+      }
+    }
+  }
+
+  @override
+  void onClose() {
+    feedbackC.dispose();
+    super.onClose();
   }
 }

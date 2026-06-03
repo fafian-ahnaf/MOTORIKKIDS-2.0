@@ -168,37 +168,42 @@ class RegisterView extends GetView<RegisterController> {
                           )),
                           const SizedBox(height: 30),
 
-                          // --- KHUSUS ORANG TUA (HUBUNGKAN DATA ANAK) ---
+                          // =======================================================
+                          // --- KHUSUS ORANG TUA: INPUT TOKEN ANAK ---
+                          // =======================================================
                           Obx(() {
                             if (controller.currentRole.value == 'parent') {
                               return Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  _buildLabel("Nama Anak"),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                                    padding: const EdgeInsets.all(16),
                                     decoration: BoxDecoration(
-                                      color: Colors.white, 
-                                      borderRadius: BorderRadius.circular(25), 
-                                      border: Border.all(color: biruAwan, width: 3)
+                                      color: biruAwan.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(color: biruAwan.withOpacity(0.3), width: 2)
                                     ),
-                                    child: Row(children: [
-                                      Icon(Icons.child_care_rounded, color: biruAwan),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        child: DropdownButtonHideUnderline(
-                                          child: DropdownButton<String>(
-                                            value: controller.selectedStudentId.value,
-                                            hint: Text("Pilih nama anak...", style: TextStyle(color: Colors.grey.shade400, fontWeight: FontWeight.w700)),
-                                            isExpanded: true,
-                                            icon: Icon(Icons.keyboard_arrow_down_rounded, color: biruAwan),
-                                            style: const TextStyle(fontWeight: FontWeight.w800, color: Colors.black87),
-                                            onChanged: (val) => controller.selectedStudentId.value = val,
-                                            items: controller.studentList.map((item) => DropdownMenuItem(value: item['id'], child: Text(item['name']!, overflow: TextOverflow.ellipsis))).toList(),
-                                          ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Icon(Icons.info_outline_rounded, color: biruAwan, size: 20),
+                                            const SizedBox(width: 8),
+                                            Expanded(child: Text("Hubungkan dengan data Anak", style: TextStyle(fontWeight: FontWeight.bold, color: biruAwan))),
+                                          ],
                                         ),
-                                      ),
-                                    ]),
+                                        const SizedBox(height: 12),
+                                        _buildLabel("Masukkan Token Anak"),
+                                        _buildTextField(
+                                          controller: controller.tokenAnakC, 
+                                          hint: "Contoh: AX92BZ", 
+                                          icon: Icons.key_rounded,
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text("*Dapatkan token ini dari Guru kelas anak Anda.", style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontStyle: FontStyle.italic)),
+                                      ],
+                                    ),
                                   ),
                                   const SizedBox(height: 30),
                                 ],
@@ -207,6 +212,7 @@ class RegisterView extends GetView<RegisterController> {
                               return const SizedBox.shrink();
                             }
                           }),
+                          // =======================================================
 
                           // --- TOMBOL DAFTAR ---
                           Obx(() => SizedBox(

@@ -1,68 +1,126 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../../routes/app_pages.dart';
 
 class ParentDashboardController extends GetxController {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  var parentName = "Memuat...".obs;
-  var childName = "Belum ada data anak".obs;
-  var className = "-".obs;
   var isLoading = true.obs;
-  var panggilan = "".obs;
+  var parentName = "Bunda/Ayah".obs;
   
-  
-  var studentId = "".obs; 
+  var studentData = <String, dynamic>{}.obs;
+  var studentId = "".obs;
+
+  var latestObservation = <String, dynamic>{}.obs;
+
+  // --- VARIABEL UNTUK POP-UP TOKEN ---
+  final tokenC = TextEditingController();
+  var isLinking = false.obs;
 
   @override
   void onInit() {
     super.onInit();
-    loadParentData();
+    loadDashboardData();
   }
 
-  void loadParentData() async {
+  void loadDashboardData() async {
     try {
+      isLoading.value = true;
       User? user = _auth.currentUser;
-      if (user == null) return;
-      String uid = user.uid;
-
       
-      var userDoc = await _firestore.collection('users').doc(uid).get();
-      if (userDoc.exists) {
-        var data = userDoc.data();
-        parentName.value = data?['nama_lengkap'] ?? "Ayah/Bunda";
-        
-        String gender = data?['jenis_kelamin'] ?? "";
-        if (gender == "Laki-laki") panggilan.value = "Pak";
-        else if (gender == "Perempuan") panggilan.value = "Bu";
-      }
+      if (user != null) {
+        var userDoc = await _firestore.collection('users').doc(user.uid).get();
+        if (userDoc.exists) {
+          parentName.value = userDoc.data()?['nama_lengkap'] ?? "Bunda/Ayah";
+          studentId.value = userDoc.data()?['linked_student_id'] ?? ""; 
+        }
 
-      
-      var anakQuery = await _firestore
-          .collection('students')
-          .where('parent_id', isEqualTo: uid)
-          .limit(1) 
-          .get();
+        if (studentId.value.isNotEmpty) {
+          var studentDoc = await _firestore.collection('students').doc(studentId.value).get();
+          if (studentDoc.exists) {
+            var data = studentDoc.data()!;
+            data['id'] = studentDoc.id;
+            studentData.value = data;
 
-      if (anakQuery.docs.isNotEmpty) {
-        var anakDoc = anakQuery.docs.first; 
-        var anakData = anakDoc.data();
-        
-        childName.value = anakData['name'] ?? "Tanpa Nama"; 
-        className.value = anakData['kelas'] ?? "-";
-        
-        
-        studentId.value = anakDoc.id; 
-      } else {
-        childName.value = "Belum terhubung";
-        className.value = "-";
+            await _fetchLatestObservation(studentDoc.id);
+          }
+        }
       }
     } catch (e) {
-      print("Error loading parent data: $e");
+      print("Error loading parent dashboard: $e");
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  Future<void> _fetchLatestObservation(String sId) async {
+    try {
+      var subColSnapshot = await _firestore.collection('students')
+          .doc(sId).collection('riwayat').orderBy('date', descending: true).limit(1).get();
+
+      if (subColSnapshot.docs.isNotEmpty) {
+        latestObservation.value = subColSnapshot.docs.first.data();
+      } else {
+        var doc = await _firestore.collection('students').doc(sId).get();
+        if (doc.exists && doc.data()?['riwayat'] != null) {
+          List<dynamic> historyArray = doc.data()!['riwayat'];
+          if (historyArray.isNotEmpty) {
+            historyArray.sort((a, b) => (b['date'] ?? "").compareTo(a['date'] ?? ""));
+            latestObservation.value = Map<String, dynamic>.from(historyArray.first);
+          }
+        }
+      }
+    } catch (e) {
+      print("Error fetching latest observation: $e");
+    }
+  }
+
+  // --- FUNGSI MENGHUBUNGKAN TOKEN BARU DARI DASHBOARD ---
+  void linkStudentToken() async {
+    if (tokenC.text.trim().isEmpty) {
+      Get.snackbar("Eits!", "Token tidak boleh kosong ya.", backgroundColor: Colors.orange.shade100);
+      return;
+    }
+
+    try {
+      isLinking.value = true;
+      User? user = _auth.currentUser;
+      if (user == null) return;
+
+      var snapshot = await _firestore.collection('students')
+          .where('token_ortu', isEqualTo: tokenC.text.trim())
+          .get();
+
+      if (snapshot.docs.isEmpty) {
+        Get.snackbar("Gagal", "Token tidak ditemukan. Pastikan ketikan sesuai dari Guru.", backgroundColor: Colors.red.shade100);
+        return;
+      }
+
+      var studentDoc = snapshot.docs.first;
+      var dataAnak = studentDoc.data();
+
+      if (dataAnak['parent_id'] != null && dataAnak['parent_id'].toString().isNotEmpty && dataAnak['parent_id'] != user.uid) {
+        Get.snackbar("Gagal", "Token ini sudah digunakan oleh akun orang tua lain.", backgroundColor: Colors.orange.shade100);
+        return;
+      }
+
+      await _firestore.collection('users').doc(user.uid).update({'linked_student_id': studentDoc.id});
+      await _firestore.collection('students').doc(studentDoc.id).update({'parent_id': user.uid});
+
+      tokenC.clear();
+      Get.back(); // Tutup Dialog
+      
+      Get.snackbar("Berhasil! 🎉", "Akun berhasil dihubungkan dengan data Ananda.", backgroundColor: Colors.green.shade100);
+      
+      // Muat ulang data dashboard
+      loadDashboardData();
+
+    } catch (e) {
+      Get.snackbar("Error", "Gagal menghubungkan token: $e", backgroundColor: Colors.red.shade100);
+    } finally {
+      isLinking.value = false;
     }
   }
 
@@ -74,8 +132,9 @@ class ParentDashboardController extends GetxController {
     return "Selamat Malam";
   }
 
-  void logout() async {
-    await _auth.signOut();
-    Get.offAllNamed(Routes.LOGIN);
+  @override
+  void onClose() {
+    tokenC.dispose();
+    super.onClose();
   }
 }

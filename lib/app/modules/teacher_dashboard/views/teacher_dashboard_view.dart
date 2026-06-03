@@ -80,7 +80,7 @@ class TeacherDashboardView extends GetView<TeacherDashboardController> {
                   ),
                   
                   // ==========================================================
-                  // PANEL PILIH SEMUA (Hanya Muncul Saat Mode Seleksi Aktif)
+                  // PANEL PILIH SEMUA & AKSI MULTI-SELECT (TERMASUK AI KELOMPOK)
                   // ==========================================================
                   Obx(() {
                     if (!controller.isSelectionMode.value || controller.studentsStream.isEmpty) return const SizedBox();
@@ -88,37 +88,57 @@ class TeacherDashboardView extends GetView<TeacherDashboardController> {
                     
                     return Container(
                       margin: const EdgeInsets.only(top: 8, bottom: 16),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
-                        color: Colors.red.shade50, 
+                        color: Colors.blue.shade50, 
                         borderRadius: BorderRadius.circular(15),
-                        border: Border.all(color: Colors.red.shade200, width: 2)
+                        border: Border.all(color: Colors.blue.shade200, width: 2)
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      child: Column(
                         children: [
                           Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Checkbox(
-                                value: isAllSelected,
-                                activeColor: Colors.red,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
-                                onChanged: (val) => controller.toggleSelectAll(),
+                              Row(
+                                children: [
+                                  Checkbox(
+                                    value: isAllSelected,
+                                    activeColor: Colors.blue,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+                                    onChanged: (val) => controller.toggleSelectAll(),
+                                  ),
+                                  Text("Pilih Semua", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue.shade800, fontSize: 16)),
+                                ],
                               ),
-                              Text("Pilih Semua", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red.shade700, fontSize: 16)),
+                              Text("${controller.selectedIds.length} Terpilih", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade600)),
                             ],
                           ),
-                          if (controller.selectedIds.isNotEmpty)
-                            ElevatedButton.icon(
-                              onPressed: () => controller.deleteSelectedStudents(),
-                              icon: const Icon(Icons.delete_sweep_rounded, color: Colors.white, size: 20),
-                              label: Text("Hapus (${controller.selectedIds.length})", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.red, 
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))
-                              ),
+                          if (controller.selectedIds.isNotEmpty) ...[
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                // Tombol Hapus (Kecil)
+                                IconButton(
+                                  onPressed: () => controller.deleteSelectedStudents(),
+                                  icon: const Icon(Icons.delete_sweep_rounded, color: Colors.red),
+                                  tooltip: "Hapus Terpilih",
+                                ),
+                                const SizedBox(width: 8),
+                                // Tombol Observasi Kelompok (Besar)
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: () => controller.showGroupObservationDialog(context),
+                                    icon: const Icon(Icons.psychology_rounded, color: Colors.white, size: 20),
+                                    label: const Text("Observasi Kelompok", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.blue.shade600, elevation: 0,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))
+                                    ),
+                                  ),
+                                ),
+                              ],
                             )
+                          ]
                         ],
                       ),
                     );
@@ -321,11 +341,19 @@ class TeacherDashboardView extends GetView<TeacherDashboardController> {
   }
 
   // ==========================================================
-  // CARD DAFTAR SISWA (Menyesuaikan Jika Mode Seleksi Aktif)
+  // CARD DAFTAR SISWA
   // ==========================================================
   Widget _buildStudentItem({required BuildContext context, required Map<String, dynamic> data, required Color statusColor}) {
-    String name = data['name'] ?? "No Name"; String kelas = data['kelas'] ?? "-";
-    String gender = data['gender'] ?? "Laki-laki"; String id = data['id']; String age = data['age'] ?? "-";
+    String name = data['name'] ?? "No Name"; 
+    String kelas = data['kelas'] ?? "-";
+    String gender = data['gender'] ?? "Laki-laki"; 
+    String id = data['id']; 
+    String age = data['age'] ?? "-";
+    
+    String tokenOrtu = data['token_ortu'] ?? "-"; 
+    
+    bool isLinked = data['parent_id'] != null && data['parent_id'].toString().isNotEmpty;
+    
     bool isMale = gender == "Laki-laki";
     IconData genderIcon = isMale ? Icons.boy_rounded : Icons.girl_rounded;
     Color genderColor = isMale ? const Color(0xFF4FC3F7) : const Color(0xFFFF7E95);
@@ -336,7 +364,7 @@ class TeacherDashboardView extends GetView<TeacherDashboardController> {
 
       return Container(
         decoration: BoxDecoration(
-          color: isSelected ? Colors.red.shade50 : Colors.white, // Highlight merah terang jika dipilih
+          color: isSelected ? Colors.red.shade50 : Colors.white, 
           borderRadius: BorderRadius.circular(24),
           border: Border.all(color: isSelected ? Colors.red : statusColor.withOpacity(0.5), width: isSelected ? 3 : 3), 
           boxShadow: [BoxShadow(color: statusColor.withOpacity(0.15), blurRadius: 10, offset: const Offset(0, 6))],
@@ -345,7 +373,6 @@ class TeacherDashboardView extends GetView<TeacherDashboardController> {
           color: Colors.transparent,
           child: InkWell(
             onTap: () {
-              // Jika mode pilih aktif, tekan card akan otomatis mencentang
               if (isSelectionMode) {
                 controller.toggleStudentSelection(id);
               } else {
@@ -379,17 +406,56 @@ class TeacherDashboardView extends GetView<TeacherDashboardController> {
                               const SizedBox(width: 4), Icon(genderIcon, size: 16, color: genderColor)
                             ],
                           ),
-                        )
+                        ),
+                        const SizedBox(height: 6),
+                        
+                        if (isLinked)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.blue.shade200)),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.family_restroom_rounded, size: 14, color: Colors.blue.shade700),
+                                const SizedBox(width: 4),
+                                Text("Terhubung dgn Ortu", style: TextStyle(fontSize: 12, color: Colors.blue.shade700, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                          )
+                        else
+                          InkWell(
+                            onTap: () {
+                              Clipboard.setData(ClipboardData(text: tokenOrtu));
+                              Get.snackbar(
+                                "Tersalin! 📋", 
+                                "Token ortu '$tokenOrtu' berhasil disalin.",
+                                backgroundColor: Colors.green, colorText: Colors.white,
+                                snackPosition: SnackPosition.BOTTOM, duration: const Duration(seconds: 2)
+                              );
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.green.shade200)),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.key_rounded, size: 14, color: Colors.green.shade700),
+                                  const SizedBox(width: 4),
+                                  Text("Token: $tokenOrtu", style: TextStyle(fontSize: 12, color: Colors.green.shade700, fontWeight: FontWeight.bold)),
+                                  const SizedBox(width: 4),
+                                  Icon(Icons.copy_rounded, size: 14, color: Colors.green.shade700),
+                                ],
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ),
                   
-                  // JIKA MODE SELEKSI: Tampilkan Checkbox
-                  // JIKA NORMAL: Tampilkan tombol Edit & Hapus
                   if (isSelectionMode)
                     Checkbox(
                       value: isSelected,
-                      activeColor: Colors.red,
+                      activeColor: Colors.blue,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
                       onChanged: (val) => controller.toggleStudentSelection(id),
                     )

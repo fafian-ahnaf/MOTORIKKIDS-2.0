@@ -26,6 +26,7 @@ class RegisterController extends GetxController {
   final phoneC = TextEditingController();
   final passC = TextEditingController();
   final confirmPassC = TextEditingController();
+  final tokenAnakC = TextEditingController();
 
   
   Color get themeColor => currentRole.value == 'teacher' ? Colors.orange : Colors.blueAccent;
@@ -90,35 +91,67 @@ class RegisterController extends GetxController {
   
   void register() async {
     
+    // 1. Validasi Dasar
     if (nameC.text.isEmpty || emailC.text.isEmpty || passC.text.isEmpty) {
       Get.snackbar("Eits!", "Nama, Email, dan Password wajib diisi.", backgroundColor: Colors.red.shade100);
       return;
     }
     
-    
-    if (currentRole.value == 'parent' && selectedStudentId.value == null) {
-      Get.snackbar("Pilih Anak", "Silakan pilih nama anak Anda terlebih dahulu untuk menghubungkan data.", backgroundColor: Colors.orange.shade100);
+    // 2. Validasi Password
+    if (passC.text != confirmPassC.text) {
+      Get.snackbar("Password Salah", "Password dan Konfirmasi tidak sama.", backgroundColor: Colors.orange.shade100);
       return;
     }
 
-    
-    if (passC.text != confirmPassC.text) {
-      Get.snackbar("Password Salah", "Password dan Konfirmasi tidak sama.", backgroundColor: Colors.orange.shade100);
+    // 3. Validasi Khusus Orang Tua (Token Wajib Isi)
+    if (currentRole.value == 'parent' && tokenAnakC.text.trim().isEmpty) {
+      Get.snackbar("Token Kosong", "Silakan masukkan Token Anak yang didapat dari Guru.", backgroundColor: Colors.orange.shade100);
       return;
     }
 
     try {
       isLoading.value = true;
 
+      String? studentDocIdToUpdate; // Variabel untuk menyimpan ID dokumen anak
+
+      // =========================================================
+      // 4. CEK VALIDITAS TOKEN SEBELUM MEMBUAT AKUN
+      // =========================================================
+      if (currentRole.value == 'parent') {
+        var snapshot = await _firestore.collection('students')
+            .where('token_ortu', isEqualTo: tokenAnakC.text.trim())
+            .get();
+
+        if (snapshot.docs.isEmpty) {
+          isLoading.value = false;
+          Get.snackbar("Token Tidak Valid", "Token anak tidak ditemukan. Pastikan token persis seperti yang diberikan guru.", backgroundColor: Colors.red.shade100, colorText: Colors.red[900]);
+          return; 
+        } 
+        
+        // TAMBAHAN KEAMANAN: Cek apakah data anak ini sudah punya parent_id
+        var dataAnak = snapshot.docs.first.data();
+        if (dataAnak['parent_id'] != null && dataAnak['parent_id'].toString().isNotEmpty) {
+          isLoading.value = false;
+          Get.snackbar("Token Kadaluarsa", "Token ini sudah digunakan oleh akun orang tua lain.", backgroundColor: Colors.orange.shade100, colorText: Colors.orange[900]);
+          return; // Tolak pendaftaran
+        }
+
+        // Jika lolos semua, simpan ID
+        studentDocIdToUpdate = snapshot.docs.first.id;
+      }
+      // =========================================================
+
       
+      // 5. Buat Akun Firebase Auth
       UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
-        email: emailC.text.trim(), // Trim spasi
+        email: emailC.text.trim(), 
         password: passC.text.trim(),
       );
 
       String uid = userCredential.user!.uid;
 
       
+      // 6. Simpan Profil ke Firestore 'users'
       await _firestore.collection('users').doc(uid).set({
         'uid': uid,
         'nama_lengkap': nameC.text.trim(),
@@ -130,15 +163,15 @@ class RegisterController extends GetxController {
       });
 
       
-      if (currentRole.value == 'parent' && selectedStudentId.value != null) {
-        await _firestore.collection('students').doc(selectedStudentId.value).update({
-          'parent_id': uid, 
+      // 7. Jika Orang Tua, Hubungkan Akun Ortu ke Data Anak (Gunakan ID doc yang didapat dari Token)
+      if (currentRole.value == 'parent' && studentDocIdToUpdate != null) {
+        await _firestore.collection('students').doc(studentDocIdToUpdate).update({
+          'parent_id': uid, // Tautkan ID orang tua ke data anak
         });
       }
 
       
-      Get.snackbar("Berhasil", "Akun berhasil dibuat. Silakan Login.", backgroundColor: Colors.green.shade100);
-      
+      Get.snackbar("Berhasil 🎉", "Akun berhasil dibuat dan dihubungkan. Silakan Login.", backgroundColor: Colors.green.shade100);
       
       await _auth.signOut();
       Get.offAllNamed(Routes.LOGIN);
