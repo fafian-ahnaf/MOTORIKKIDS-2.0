@@ -15,7 +15,6 @@ class ParentDashboardController extends GetxController {
 
   var latestObservation = <String, dynamic>{}.obs;
 
-  // --- VARIABEL UNTUK POP-UP TOKEN ---
   final tokenC = TextEditingController();
   var isLinking = false.obs;
 
@@ -31,21 +30,34 @@ class ParentDashboardController extends GetxController {
       User? user = _auth.currentUser;
       
       if (user != null) {
+        // 1. Ambil nama orang tua dari tabel users
         var userDoc = await _firestore.collection('users').doc(user.uid).get();
         if (userDoc.exists) {
           parentName.value = userDoc.data()?['nama_lengkap'] ?? "Bunda/Ayah";
-          studentId.value = userDoc.data()?['linked_student_id'] ?? ""; 
         }
 
-        if (studentId.value.isNotEmpty) {
-          var studentDoc = await _firestore.collection('students').doc(studentId.value).get();
-          if (studentDoc.exists) {
-            var data = studentDoc.data()!;
-            data['id'] = studentDoc.id;
-            studentData.value = data;
+        // =================================================================
+        // PERBAIKAN: CARI LANGSUNG KE TABEL STUDENTS BERDASARKAN parent_id
+        // =================================================================
+        var studentQuery = await _firestore.collection('students')
+            .where('parent_id', isEqualTo: user.uid)
+            .limit(1)
+            .get();
 
-            await _fetchLatestObservation(studentDoc.id);
-          }
+        if (studentQuery.docs.isNotEmpty) {
+          var studentDoc = studentQuery.docs.first;
+          var data = studentDoc.data();
+          data['id'] = studentDoc.id;
+          
+          studentId.value = studentDoc.id;
+          
+          // Gunakan assignAll agar tampilan layar (UI) langsung ter-refresh
+          studentData.assignAll(data); 
+
+          await _fetchLatestObservation(studentDoc.id);
+        } else {
+          // Jika kosong, pastikan layar menampilkan "Belum Terhubung"
+          studentData.clear();
         }
       }
     } catch (e) {
@@ -61,14 +73,14 @@ class ParentDashboardController extends GetxController {
           .doc(sId).collection('riwayat').orderBy('date', descending: true).limit(1).get();
 
       if (subColSnapshot.docs.isNotEmpty) {
-        latestObservation.value = subColSnapshot.docs.first.data();
+        latestObservation.assignAll(subColSnapshot.docs.first.data());
       } else {
         var doc = await _firestore.collection('students').doc(sId).get();
         if (doc.exists && doc.data()?['riwayat'] != null) {
           List<dynamic> historyArray = doc.data()!['riwayat'];
           if (historyArray.isNotEmpty) {
             historyArray.sort((a, b) => (b['date'] ?? "").compareTo(a['date'] ?? ""));
-            latestObservation.value = Map<String, dynamic>.from(historyArray.first);
+            latestObservation.assignAll(Map<String, dynamic>.from(historyArray.first));
           }
         }
       }
@@ -106,7 +118,6 @@ class ParentDashboardController extends GetxController {
         return;
       }
 
-      await _firestore.collection('users').doc(user.uid).update({'linked_student_id': studentDoc.id});
       await _firestore.collection('students').doc(studentDoc.id).update({'parent_id': user.uid});
 
       tokenC.clear();

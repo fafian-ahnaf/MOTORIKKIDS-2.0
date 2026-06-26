@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 
 class NlpService {
   
-  static const String _baseUrl = 'http://10.88.77.217:5000/predict'; 
+  static const String _baseUrl = 'http://10.74.147.217:5000/predict'; 
 
   static Future<Map<String, dynamic>?> analisisMotorik(String teks) async {
     try {

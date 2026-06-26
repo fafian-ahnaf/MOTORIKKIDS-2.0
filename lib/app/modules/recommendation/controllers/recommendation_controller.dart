@@ -55,7 +55,7 @@ class RecommendationController extends GetxController {
     
     try {
       String teksObservasi = _generateObservationText(_currentFineScore, _currentGrossScore);
-      final String apiUrl = "http://192.168.141.60:5000/predict";
+      final String apiUrl = "http://10.74.147.217:5000/predict";
       
       final response = await http.post(
         Uri.parse(apiUrl),

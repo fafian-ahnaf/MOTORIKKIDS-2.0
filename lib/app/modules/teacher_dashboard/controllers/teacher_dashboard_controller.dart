@@ -191,7 +191,7 @@ class TeacherDashboardController extends GetxController {
       String teksObservasi = observasiKelompokC.text.trim();
 
       // 1. Tembak API IndoBERT (Satu kali saja untuk semua anak terpilih)
-      final String apiUrl = "http://192.168.141.60:5000/predict";
+      final String apiUrl = "http://10.74.147.217:5000/predict";
       final response = await http.post(
         Uri.parse(apiUrl),
         headers: {"Content-Type": "application/json"},

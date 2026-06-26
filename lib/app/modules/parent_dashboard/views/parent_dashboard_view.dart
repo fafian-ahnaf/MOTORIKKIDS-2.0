@@ -126,7 +126,7 @@ class ParentDashboardView extends GetView<ParentDashboardController> {
           child: Container(
             padding: const EdgeInsets.all(3),
             decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: pinkCeria, width: 3)),
-            child: const CircleAvatar(radius: 26, backgroundColor: Colors.white, backgroundImage: AssetImage('assets/ortu.png')), 
+            child: const CircleAvatar(radius: 26, backgroundColor: Colors.white, backgroundImage: AssetImage('assets/orang tua.png')), 
           ),
         ),
       ],

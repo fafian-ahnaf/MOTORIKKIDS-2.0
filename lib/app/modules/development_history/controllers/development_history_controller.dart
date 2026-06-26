@@ -11,14 +11,16 @@ class DevelopmentHistoryController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    // Mendapatkan studentId dari argumen yang dikirim
+    // Tangkap argumen studentId dengan aman
     if (Get.arguments != null) {
       studentId = Get.arguments['studentId'] ?? Get.arguments['id'] ?? "";
-      if (studentId.isNotEmpty) {
-        fetchHistory();
-      } else {
-        isLoading.value = false;
-      }
+    }
+    
+    if (studentId.isNotEmpty) {
+      fetchHistory();
+    } else {
+      isLoading.value = false;
+      Get.snackbar("Info", "ID Siswa tidak ditemukan");
     }
   }
 
@@ -27,27 +29,25 @@ class DevelopmentHistoryController extends GetxController {
       isLoading.value = true;
       List<Map<String, dynamic>> combinedHistory = [];
       
-      // 1. AMBIL DARI ARRAY (Data lama)
+      // 1. Ambil dari Array Lama
       var doc = await _firestore.collection('students').doc(studentId).get();
-      if (doc.exists) {
-        var data = doc.data();
-        if (data != null && data['riwayat'] != null) {
-          List<dynamic> rawHistory = data['riwayat'];
+      if (doc.exists && doc.data() != null && doc.data()!.containsKey('riwayat')) {
+        var rawHistory = doc.data()!['riwayat'];
+        if (rawHistory is List) {
           combinedHistory.addAll(rawHistory.map((e) => Map<String, dynamic>.from(e)));
         }
       }
 
-      // 2. AMBIL DARI SUB-KOLEKSI (Data AI Kelompok)
+      // 2. Ambil dari Sub-koleksi
       var subColSnapshot = await _firestore.collection('students').doc(studentId).collection('riwayat').get();
-      for (var subDoc in subColSnapshot.docs) {
-        combinedHistory.add(subDoc.data());
+      if (subColSnapshot.docs.isNotEmpty) {
+        combinedHistory.addAll(subColSnapshot.docs.map((d) => d.data()));
       }
 
-      // 3. URUTKAN BERDASARKAN TANGGAL (Terbaru ke terlama)
-      combinedHistory.sort((a, b) => (b['date'] ?? "").compareTo(a['date'] ?? ""));
+      // 3. Urutkan berdasarkan tanggal (Terbaru ke Terlama)
+      combinedHistory.sort((a, b) => (b['date'] ?? "").toString().compareTo((a['date'] ?? "").toString()));
       
       assessmentList.assignAll(combinedHistory);
-      
     } catch (e) {
       print("Error fetch history: $e");
     } finally {
@@ -55,12 +55,23 @@ class DevelopmentHistoryController extends GetxController {
     }
   }
 
-  double getChartValue(String status) {
-    status = status.toUpperCase();
-    if (status.contains("BSB")) return 4.0;
-    if (status.contains("BSH")) return 3.0;
-    if (status.contains("MB")) return 2.0;
-    if (status.contains("BB")) return 1.0;
+  // Fungsi kebal error tipe data
+  double getChartValue(dynamic score) {
+    if (score == null) return 0.0;
+    
+    String s = score.toString().toUpperCase();
+    if (s.contains("BSB")) return 4.0;
+    if (s.contains("BSH")) return 3.0;
+    if (s.contains("MB")) return 2.0;
+    if (s.contains("BB")) return 1.0;
+    
+    double? val = double.tryParse(score.toString());
+    if (val != null) {
+      if (val >= 76) return 4.0;
+      if (val >= 51) return 3.0;
+      if (val >= 26) return 2.0;
+      return 1.0;
+    }
     return 0.0;
   }
 }
