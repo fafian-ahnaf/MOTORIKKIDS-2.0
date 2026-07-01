@@ -18,7 +18,7 @@ class RecommendationController extends GetxController {
   String role = ''; 
 
   // =========================================================
-  // VARIABEL BARU KHUSUS FITUR ORANG TUA (CHECKLIST & FEEDBACK)
+  // VARIABEL KHUSUS FITUR ORANG TUA (CHECKLIST & FEEDBACK)
   // =========================================================
   var recommendationDocId = "".obs; 
   var isDoneByParent = false.obs;
@@ -43,6 +43,29 @@ class RecommendationController extends GetxController {
     }
   }
 
+  // --- MENGUBAH TEKS UMUR JADI BULAN (REGEX) ---
+  int _hitungUsiaBulanPintar(String ageString) {
+    int totalBulan = 40; 
+    try {
+      String str = ageString.toLowerCase();
+      int tahun = 0;
+      int bulan = 0;
+
+      RegExp tahunRegex = RegExp(r'(\d+)\s*(tahun|thn)');
+      var tahunMatch = tahunRegex.firstMatch(str);
+      if (tahunMatch != null) tahun = int.parse(tahunMatch.group(1) ?? '0');
+
+      RegExp bulanRegex = RegExp(r'(\d+)\s*(bulan|bln)');
+      var bulanMatch = bulanRegex.firstMatch(str);
+      if (bulanMatch != null) bulan = int.parse(bulanMatch.group(1) ?? '0');
+
+      totalBulan = (tahun * 12) + bulan;
+      return totalBulan == 0 ? 40 : totalBulan;
+    } catch (e) {
+      return 40;
+    }
+  }
+
   String _generateObservationText(double fine, double gross) {
     String fineStatus = fine >= 75 ? "sudah baik" : "perlu dilatih lagi";
     String grossStatus = gross >= 75 ? "sudah sangat aktif" : "masih kaku";
@@ -55,7 +78,7 @@ class RecommendationController extends GetxController {
     
     try {
       String teksObservasi = _generateObservationText(_currentFineScore, _currentGrossScore);
-      final String apiUrl = "http://10.74.147.217:5000/predict";
+      final String apiUrl = "https://motorikkids.my.id/predict";
       
       final response = await http.post(
         Uri.parse(apiUrl),
@@ -66,7 +89,10 @@ class RecommendationController extends GetxController {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         String statusNLP = data['data']['prediksi_status'] ?? "BSH"; 
-        recommendationData.value = _mapStatusToActivity(statusNLP);
+        
+        // Panggil fungsi dinamis yang menggabungkan Umur + Kategori + Status NLP
+        recommendationData.value = _generateDynamicRecommendation(statusNLP);
+        
       } else {
         throw "Server Error: ${response.statusCode}";
       }
@@ -80,44 +106,131 @@ class RecommendationController extends GetxController {
     }
   }
 
-  Map<String, String> _mapStatusToActivity(String status) {
-    if (status == "BB") {
-      return {
-        "title": "Bermain Penuh Kasih Sayang 🧸",
-        "desc": "Ananda masih dalam tahap pengenalan gerak. Pendampingan penuh sangat diperlukan di tahap ini.",
-        "tujuan": "Membangun rasa percaya diri dan kesadaran gerak tubuh Ananda.",
-        "cara": "Sambil bernyanyi, pegang tangan Ananda dan bimbing perlahan untuk menggenggam benda atau merenggangkan otot.",
-        "durasi": "10 Menit",
-        "lokasi": "Dalam Ruangan yang Nyaman",
-      };
-    } else if (status == "MB") {
-      return {
-        "title": "Langkah Kecil Ceria! 🎈",
-        "desc": "Hebat! Ananda sudah mulai berani mencoba. Mari kita beri dorongan agar ia makin mandiri.",
-        "tujuan": "Melatih kekuatan genggaman dasar dan tumpuan kaki Ananda.",
-        "cara": "Ajak Ananda menyusun 3 buah balok warna-warni, atau berlatih menendang bola yang diam.",
-        "durasi": "15 Menit",
-        "lokasi": "Halaman Rumah / Kelas",
-      };
-    } else if (status == "BSH") {
-      return {
-        "title": "Petualangan Si Aktif! 🚀",
-        "desc": "Keren! Kemampuan motorik Ananda sudah sangat sesuai dengan usianya. Waktunya bermain lebih seru!",
-        "tujuan": "Memantapkan keseimbangan, fokus, dan koordinasi mata-tangan.",
-        "cara": "Buat garis lurus di lantai untuk dititi Ananda, atau ajak mewarnai gambar berukuran besar bersama.",
-        "durasi": "20 Menit",
-        "lokasi": "Taman Bermain / Luar Ruangan",
-      };
-    } else { 
-      return {
-        "title": "Tantangan Bintang Cilik! 🌟",
-        "desc": "Luar biasa! Motorik Ananda berkembang sangat pesat dan melampaui rata-rata. Ia butuh permainan yang menantang.",
-        "tujuan": "Mengasah ketangkasan tingkat lanjut dan kreativitas gerakan mandiri.",
-        "cara": "Bersepeda roda tiga menghindari rintangan, atau menggunting kertas dengan pola garis berkelok/zig-zag.",
-        "durasi": "30 Menit",
-        "lokasi": "Area Terbuka / Lapangan Luas",
-      };
+  // =========================================================================
+  // FUNGSI INTI SDIDTK: PENGHASIL REKOMENDASI BERDASARKAN UMUR & NLP
+  // =========================================================================
+  Map<String, String> _generateDynamicRecommendation(String status) {
+    int umurBulan = _hitungUsiaBulanPintar(_currentAge);
+    String kategoriTerlemah = _currentFineScore <= _currentGrossScore ? "Halus" : "Kasar";
+
+    String title = "";
+    String desc = "";
+    String tujuan = "";
+    String cara = "";
+    String durasi = "";
+    String lokasi = kategoriTerlemah == "Kasar" ? "Halaman Rumah / Lapangan" : "Ruang Kelas / Meja Belajar";
+
+    // ---------------------------------------------------------
+    // RENTANG: 60 - 72 BULAN (5 - 6 Tahun)
+    // ---------------------------------------------------------
+    if (umurBulan >= 60 && umurBulan <= 72) {
+      if (kategoriTerlemah == "Kasar") {
+        if (status == "BB" || status == "MB") {
+          title = "Langkah Gesit Pra-Sekolah 🏃";
+          desc = "Kemampuan gerak Ananda perlu dorongan agar setara dengan teman seusianya.";
+          tujuan = "Mengejar ketertinggalan motorik kasar 5 tahun.";
+          cara = "Latih anak berdiri 1 kaki selama 11 detik. Ajari melompat jauh dan bermain halang rintang ringan secara rutin.";
+          durasi = "20 Menit";
+        } else {
+          title = "Si Paling Tangkas! ⚽";
+          desc = "Sangat optimal! Ananda sudah siap menerima tantangan fisik yang lebih kompleks.";
+          tujuan = "Mempersiapkan kematangan fisik usia prasekolah.";
+          cara = "Ajak anak bermain permainan aturan seperti sepak bola mini atau lompat tali untuk melatih ketangkasan.";
+          durasi = "Bebas Aktif";
+        }
+      } else {
+        if (status == "BB" || status == "MB") {
+          title = "Fokus Jari Jemari ✍️";
+          desc = "Kesiapan menulis Ananda masih perlu dilatih agar tidak kesulitan di SD nanti.";
+          tujuan = "Meningkatkan kemampuan menulis dasar dan presisi.";
+          cara = "Latih anak menggambar orang lengkap (6 bagian tubuh) dan menulis beberapa angka serta huruf.";
+          durasi = "15 Menit";
+        } else {
+          title = "Penulis Hebat Masa Depan 🌟";
+          desc = "Perkembangan motorik halus Ananda sangat mengesankan dan presisi.";
+          tujuan = "Kemandirian menulis tingkat lanjut.";
+          cara = "Latih ketepatan memegang pensil untuk menulis nama lengkapnya sendiri dan menggambar bentuk geometri kompleks.";
+          durasi = "Bebas Terarah";
+        }
+      }
+    } 
+    // ---------------------------------------------------------
+    // RENTANG: 49 - 59 BULAN (4 Tahun)
+    // ---------------------------------------------------------
+    else if (umurBulan > 48 && umurBulan < 60) {
+      if (kategoriTerlemah == "Kasar") {
+        if (status == "BB" || status == "MB") {
+          title = "Ayo Melompat Lebih Jauh! 🦘";
+          desc = "Tungkai Ananda butuh latihan ekstra untuk keseimbangan tubuhnya.";
+          tujuan = "Meningkatkan kekuatan dan koordinasi tumpuan kaki.";
+          cara = "Latih anak berdiri 1 kaki bergantian dan lompat jauh dengan kedua kaki bersamaan melewati garis batas.";
+          durasi = "15-20 Menit";
+        } else {
+          title = "Penjelajah Kecil 🚀";
+          desc = "Kelincahan Ananda sangat baik! Mari kita pertahankan perkembangannya.";
+          tujuan = "Mengenalkan kemampuan gerak usia 5 tahun.";
+          cara = "Lanjutkan stimulasi lomba balap karung kecil, bermain engklek, atau senam tari bersama.";
+          durasi = "Bebas Aktif";
+        }
+      } else {
+        if (status == "BB" || status == "MB") {
+          title = "Berlatih Pola Ceria 🎨";
+          desc = "Koordinasi mata dan tangan Ananda butuh pembiasaan lebih lanjut.";
+          tujuan = "Mengejar ketertinggalan keluwesan jari.";
+          cara = "Beri anak kertas & krayon. Latih anak menggambar garis silang (+) dan menumpuk 8 buah kubus.";
+          durasi = "15 Menit";
+        } else {
+          title = "Seniman Cilik Kreatif ✨";
+          desc = "Luar biasa, Ananda mampu mengontrol alat tulis dengan cukup baik di usianya.";
+          tujuan = "Mengenalkan kontrol alat tulis tingkat lanjut.";
+          cara = "Lanjutkan stimulasi memotong gambar dengan gunting anak dan mulai ajari menggambar bentuk kotak/segitiga.";
+          durasi = "Bebas Terarah";
+        }
+      }
+    } 
+    // ---------------------------------------------------------
+    // RENTANG: 36 - 48 BULAN (3-4 Tahun) & DEFAULT
+    // ---------------------------------------------------------
+    else {
+      if (kategoriTerlemah == "Kasar") {
+        if (status == "BB" || status == "MB") {
+          title = "Langkah Keseimbangan 🎈";
+          desc = "Ananda perlu distimulasi lebih aktif agar percaya diri saat bergerak.";
+          tujuan = "Mengejar ketertinggalan gerak kasar balita.";
+          cara = "Ajak anak bermain 'lampu hijau-merah' untuk melatih keseimbangan, dan latih melompat sejauh mungkin tanpa jatuh.";
+          durasi = "15 Menit";
+        } else {
+          title = "Lincah & Berani! 🌪️";
+          desc = "Kemampuan gerak Ananda berkembang sesuai harapan.";
+          tujuan = "Mempertahankan kemampuan sesuai usia.";
+          cara = "Lanjutkan stimulasi melempar tangkap bola besar dan berdiri satu kaki tanpa bantuan selama 2 detik.";
+          durasi = "Bebas Aktif";
+        }
+      } else {
+        if (status == "BB" || status == "MB") {
+          title = "Jari-Jari Pintar 🧱";
+          desc = "Ananda butuh pengenalan lebih sering dengan benda-benda manipulatif.";
+          tujuan = "Mengembangkan keluwesan genggaman.";
+          cara = "Latih menggambar garis lurus atau lingkaran berulang kali, serta bermain puzzle gambar sederhana (3-4 potong).";
+          durasi = "15 Menit";
+        } else {
+          title = "Cerdas Terampil 💡";
+          desc = "Sangat baik! Jemari Ananda sudah cukup kuat untuk mulai belajar menulis kelak.";
+          tujuan = "Mengenalkan kontrol alat tulis presisi.";
+          cara = "Ajari cara memegang pensil yang benar (dynamic tripod) dan coba minta Ananda menggambar bentuk wajah manusia.";
+          durasi = "Bebas Terarah";
+        }
+      }
     }
+
+    return {
+      "title": title,
+      "desc": desc,
+      "tujuan": tujuan,
+      "cara": cara,
+      "durasi": durasi,
+      "lokasi": lokasi,
+    };
   }
 
   void fetchSavedRecommendation() async {
@@ -136,11 +249,9 @@ class RecommendationController extends GetxController {
           var doc = snapshot.docs.first;
           var data = doc.data();
           
-          // --- AMBIL DATA STATUS PENGERJAAN ORANG TUA ---
           recommendationDocId.value = doc.id;
           isDoneByParent.value = data['is_done'] ?? false;
           parentFeedbackText.value = data['parent_feedback'] ?? "";
-          // ----------------------------------------------
 
           recommendationData.value = {
             "title": data['title']?.toString() ?? "",
@@ -169,7 +280,6 @@ class RecommendationController extends GetxController {
     isLoading.value = false;
   }
 
-  // --- FUNGSI GURU: SIMPAN REKOMENDASI (Default is_done = false) ---
   void markAsDone() async {
     if (studentId != null && recommendationData.isNotEmpty) {
       try {
@@ -180,8 +290,8 @@ class RecommendationController extends GetxController {
             .add({
           ...recommendationData, 
           'date': DateTime.now().toIso8601String(), 
-          'is_done': false, // Menunggu dikerjakan oleh orang tua
-          'parent_feedback': '', // Tempat kosong untuk ulasan orang tua
+          'is_done': false, 
+          'parent_feedback': '', 
         });
 
         Get.back();
@@ -204,7 +314,6 @@ class RecommendationController extends GetxController {
     }
   }
 
-  // --- FUNGSI ORANG TUA: TANDAI SELESAI & KIRIM CATATAN ---
   void submitParentFeedback() async {
     if (recommendationDocId.value.isNotEmpty && studentId != null) {
       try {
@@ -220,7 +329,6 @@ class RecommendationController extends GetxController {
           'completed_at': DateTime.now().toIso8601String(),
         });
         
-        // Update UI seketika tanpa harus reload
         isDoneByParent.value = true;
         parentFeedbackText.value = feedbackC.text.trim();
         

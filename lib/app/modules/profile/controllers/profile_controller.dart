@@ -115,7 +115,7 @@ class ProfileController extends GetxController {
   // --- FUNGSI LOGOUT ---
   void logout() async {
     await _auth.signOut();
-    Get.offAllNamed('/login'); // Pastikan rutenya sesuai
+    Get.offAllNamed('/welcome'); // Pastikan rutenya sesuai
   }
 
   @override

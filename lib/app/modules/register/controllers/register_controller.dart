@@ -8,7 +8,6 @@ class RegisterController extends GetxController {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  
   var currentRole = 'parent'.obs;
   var isLoading = false.obs;
   var isObscure = true.obs;
@@ -16,11 +15,13 @@ class RegisterController extends GetxController {
   
   var gender = 'Laki-laki'.obs; 
 
-  
+  // --- TAMBAHAN UNTUK GURU: PILIHAN KELAS ---
+  var selectedKelas = 'Kelas A'.obs; 
+  final List<String> daftarKelas = ['Kelas A', 'Kelas B', 'Kelas C', 'Kelas D']; 
+
   var studentList = <Map<String, String>>[].obs; 
   var selectedStudentId = Rxn<String>(); 
 
-  
   final nameC = TextEditingController();
   final emailC = TextEditingController();
   final phoneC = TextEditingController();
@@ -28,7 +29,6 @@ class RegisterController extends GetxController {
   final confirmPassC = TextEditingController();
   final tokenAnakC = TextEditingController();
 
-  
   Color get themeColor => currentRole.value == 'teacher' ? Colors.orange : Colors.blueAccent;
   Color get lightThemeColor => currentRole.value == 'teacher' ? Colors.orange.shade50 : Colors.blue.shade50;
   String get roleName => currentRole.value == 'teacher' ? "Guru" : "Orang Tua";
@@ -41,12 +41,10 @@ class RegisterController extends GetxController {
       currentRole.value = Get.arguments['role'];
     }
 
-    
     if (currentRole.value == 'parent') {
       fetchStudents();
     }
 
-    
     ever(currentRole, (role) {
       if (role == 'parent') {
         fetchStudents();
@@ -60,24 +58,19 @@ class RegisterController extends GetxController {
   void togglePass() => isObscure.value = !isObscure.value;
   void toggleConfirmPass() => isObscureConfirm.value = !isObscureConfirm.value;
 
-  
   void fetchStudents() async {
     try {
-      
       var snapshot = await _firestore.collection('students').get(); 
       
       var list = <Map<String, String>>[];
       for (var doc in snapshot.docs) {
         var data = doc.data();
         
-        
-        
         bool hasParent = data.containsKey('parent_id') && data['parent_id'] != null && data['parent_id'] != "";
         
         if (!hasParent) {
           list.add({
             "id": doc.id,
-            
             "name": "${data['name'] ?? 'Tanpa Nama'} - ${data['kelas'] ?? '-'}",
           });
         }
@@ -88,9 +81,7 @@ class RegisterController extends GetxController {
     }
   }
 
-  
   void register() async {
-    
     // 1. Validasi Dasar
     if (nameC.text.isEmpty || emailC.text.isEmpty || passC.text.isEmpty) {
       Get.snackbar("Eits!", "Nama, Email, dan Password wajib diisi.", backgroundColor: Colors.red.shade100);
@@ -111,12 +102,9 @@ class RegisterController extends GetxController {
 
     try {
       isLoading.value = true;
+      String? studentDocIdToUpdate; 
 
-      String? studentDocIdToUpdate; // Variabel untuk menyimpan ID dokumen anak
-
-      // =========================================================
-      // 4. CEK VALIDITAS TOKEN SEBELUM MEMBUAT AKUN
-      // =========================================================
+      // 4. CEK VALIDITAS TOKEN (Khusus Orang Tua)
       if (currentRole.value == 'parent') {
         var snapshot = await _firestore.collection('students')
             .where('token_ortu', isEqualTo: tokenAnakC.text.trim())
@@ -128,20 +116,16 @@ class RegisterController extends GetxController {
           return; 
         } 
         
-        // TAMBAHAN KEAMANAN: Cek apakah data anak ini sudah punya parent_id
         var dataAnak = snapshot.docs.first.data();
         if (dataAnak['parent_id'] != null && dataAnak['parent_id'].toString().isNotEmpty) {
           isLoading.value = false;
           Get.snackbar("Token Kadaluarsa", "Token ini sudah digunakan oleh akun orang tua lain.", backgroundColor: Colors.orange.shade100, colorText: Colors.orange[900]);
-          return; // Tolak pendaftaran
+          return; 
         }
 
-        // Jika lolos semua, simpan ID
         studentDocIdToUpdate = snapshot.docs.first.id;
       }
-      // =========================================================
 
-      
       // 5. Buat Akun Firebase Auth
       UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
         email: emailC.text.trim(), 
@@ -150,9 +134,8 @@ class RegisterController extends GetxController {
 
       String uid = userCredential.user!.uid;
 
-      
       // 6. Simpan Profil ke Firestore 'users'
-      await _firestore.collection('users').doc(uid).set({
+      Map<String, dynamic> userData = {
         'uid': uid,
         'nama_lengkap': nameC.text.trim(),
         'email': emailC.text.trim(),
@@ -160,18 +143,23 @@ class RegisterController extends GetxController {
         'role': currentRole.value,
         'jenis_kelamin': gender.value,
         'created_at': FieldValue.serverTimestamp(),
-      });
+      };
 
-      
-      // 7. Jika Orang Tua, Hubungkan Akun Ortu ke Data Anak (Gunakan ID doc yang didapat dari Token)
+      // --- TAMBAHAN: JIKA GURU, SIMPAN DATA KELAS ---
+      if (currentRole.value == 'teacher') {
+        userData['kelas'] = selectedKelas.value;
+      }
+
+      await _firestore.collection('users').doc(uid).set(userData);
+
+      // 7. Jika Orang Tua, Hubungkan Akun Ortu ke Data Anak
       if (currentRole.value == 'parent' && studentDocIdToUpdate != null) {
         await _firestore.collection('students').doc(studentDocIdToUpdate).update({
-          'parent_id': uid, // Tautkan ID orang tua ke data anak
+          'parent_id': uid, 
         });
       }
 
-      
-      Get.snackbar("Berhasil 🎉", "Akun berhasil dibuat dan dihubungkan. Silakan Login.", backgroundColor: Colors.green.shade100);
+      Get.snackbar("Berhasil 🎉", "Akun berhasil dibuat. Silakan Login.", backgroundColor: Colors.green.shade100);
       
       await _auth.signOut();
       Get.offAllNamed(Routes.LOGIN);
@@ -197,6 +185,7 @@ class RegisterController extends GetxController {
     phoneC.dispose();
     passC.dispose();
     confirmPassC.dispose();
+    tokenAnakC.dispose();
     super.onClose();
   }
 }

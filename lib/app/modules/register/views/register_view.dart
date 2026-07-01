@@ -6,7 +6,6 @@ import '../controllers/register_controller.dart';
 class RegisterView extends GetView<RegisterController> {
   const RegisterView({Key? key}) : super(key: key); 
 
-  // --- PALET WARNA CERIA TAMBAHAN ---
   final Color bgBase = const Color(0xFFFFF8E7); 
   final Color orenJeruk = const Color(0xFFFFB74D);
   final Color pinkCeria = const Color(0xFFFF7E95); 
@@ -45,9 +44,6 @@ class RegisterView extends GetView<RegisterController> {
         ),
         body: Stack(
           children: [
-            // ============================================================
-            // --- BACKGROUND DEKORASI ---
-            // ============================================================
             Positioned(
               top: -80, right: -50,
               child: Container(
@@ -68,9 +64,6 @@ class RegisterView extends GetView<RegisterController> {
             Positioned(top: 200, right: 20, child: Icon(Icons.cloud_rounded, color: Colors.white.withOpacity(0.8), size: 80)),
             Positioned(bottom: 120, left: 40, child: Icon(Icons.cloud_rounded, color: Colors.white.withOpacity(0.6), size: 60)),
 
-            // ============================================================
-            // --- KONTEN UTAMA ---
-            // ============================================================
             SafeArea(
               child: Column(
                 children: [
@@ -82,7 +75,6 @@ class RegisterView extends GetView<RegisterController> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           
-                          // --- ILUSTRASI ---
                           Center(
                             child: Container(
                               padding: const EdgeInsets.all(20),
@@ -96,7 +88,6 @@ class RegisterView extends GetView<RegisterController> {
                           ),
                           const SizedBox(height: 24),
 
-                          // --- TEKS SAMBUTAN ---
                           Text(
                             "Daftar Akun Baru!", 
                             textAlign: TextAlign.center,
@@ -110,7 +101,6 @@ class RegisterView extends GetView<RegisterController> {
                           ),
                           const SizedBox(height: 40),
 
-                          // --- FORM PENGISIAN ---
                           _buildLabel("Nama Lengkap"),
                           _buildTextField(controller: controller.nameC, hint: "Nama Lengkap", icon: Icons.person_rounded),
                           const SizedBox(height: 20),
@@ -123,7 +113,6 @@ class RegisterView extends GetView<RegisterController> {
                           _buildTextField(controller: controller.phoneC, hint: "0812xxxx", icon: Icons.phone_android_rounded, inputType: TextInputType.phone),
                           const SizedBox(height: 20),
 
-                          // --- DROPDOWN JENIS KELAMIN ---
                           _buildLabel("Jenis Kelamin"),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
@@ -151,7 +140,49 @@ class RegisterView extends GetView<RegisterController> {
                           ),
                           const SizedBox(height: 20),
 
-                          // --- PASSWORD ---
+                          // =======================================================
+                          // --- KHUSUS GURU: INPUT KELAS ---
+                          // =======================================================
+                          Obx(() {
+                            if (controller.currentRole.value == 'teacher') {
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildLabel("Pilih Kelas Pegangan"),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(25),
+                                      border: Border.all(color: controller.themeColor.withOpacity(0.3), width: 3),
+                                    ),
+                                    child: Row(children: [
+                                      Icon(Icons.class_rounded, color: controller.themeColor),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: DropdownButtonHideUnderline(
+                                          child: DropdownButton<String>(
+                                            value: controller.selectedKelas.value,
+                                            isExpanded: true,
+                                            icon: Icon(Icons.keyboard_arrow_down_rounded, color: controller.themeColor),
+                                            style: const TextStyle(fontWeight: FontWeight.w800, color: Colors.black87),
+                                            onChanged: (val) {
+                                              if (val != null) controller.selectedKelas.value = val;
+                                            },
+                                            items: controller.daftarKelas.map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+                                          ),
+                                        ),
+                                      ),
+                                    ]),
+                                  ),
+                                  const SizedBox(height: 20),
+                                ],
+                              );
+                            }
+                            return const SizedBox.shrink();
+                          }),
+                          // =======================================================
+
                           _buildLabel("Buat Password"),
                           Obx(() => _buildTextField(
                             controller: controller.passC, hint: "Minimal 6 karakter", icon: Icons.lock_rounded, 
@@ -233,7 +264,6 @@ class RegisterView extends GetView<RegisterController> {
                           
                           const SizedBox(height: 20),
 
-                          // --- TOMBOL KEMBALI KE LOGIN ---
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [

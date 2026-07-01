@@ -49,7 +49,6 @@ class StudentDetailController extends GetxController {
       if (snapshot.exists) {
         var data = snapshot.data();
         
-        // --- PERBAIKAN ERROR LIST UNMODIFIABLE ---
         List<dynamic> rawHistory = data?['riwayat'] ?? [];
         
         // Kita ubah list mentah menjadi List baru yang bisa dimodifikasi/di-sort
@@ -59,7 +58,6 @@ class StudentDetailController extends GetxController {
         history.sort((a, b) => (b['date'] ?? "").compareTo(a['date'] ?? "")); 
         
         assessmentHistory.value = history;
-        // -----------------------------------------
 
         double totalFine = 0;
         double totalGross = 0;
@@ -204,6 +202,66 @@ class StudentDetailController extends GetxController {
     } catch (e) {
       return "-";
     }
+  }
+
+  // =========================================================================
+  // --- FUNGSI MENGUBAH TEKS JADI ANGKA BULAN (VERSI LEBIH PINTAR / REGEX) ---
+  // =========================================================================
+  int hitungUsiaBulan(String ageString) {
+    int totalBulan = 40; // Default jika gagal
+    try {
+      // Ubah ke huruf kecil semua (contoh: "4 thn 11 bln")
+      String str = ageString.toLowerCase();
+      int tahun = 0;
+      int bulan = 0;
+
+      // Cari angka yang ada di depan kata "tahun" atau "thn"
+      RegExp tahunRegex = RegExp(r'(\d+)\s*(tahun|thn)');
+      var tahunMatch = tahunRegex.firstMatch(str);
+      if (tahunMatch != null) {
+        tahun = int.parse(tahunMatch.group(1) ?? '0');
+      }
+
+      // Cari angka yang ada di depan kata "bulan" atau "bln"
+      RegExp bulanRegex = RegExp(r'(\d+)\s*(bulan|bln)');
+      var bulanMatch = bulanRegex.firstMatch(str);
+      if (bulanMatch != null) {
+        bulan = int.parse(bulanMatch.group(1) ?? '0');
+      }
+
+      totalBulan = (tahun * 12) + bulan;
+      
+      // Jika berhasil dihitung, kembalikan total bulannya
+      return totalBulan == 0 ? 40 : totalBulan;
+    } catch (e) {
+      return 40;
+    }
+  }
+
+  // =========================================================================
+  // --- FUNGSI ESTAFET KE HALAMAN ANALISIS SDIDTK (NLP) ---
+  // =========================================================================
+  void prosesAnalisisAI() {
+    if (activityNameC.text.isEmpty) {
+      Get.snackbar("Gagal", "Silakan isi nama kegiatan terlebih dahulu.", backgroundColor: Colors.orange.shade100);
+      return;
+    }
+
+    // 1. Dapatkan angka bulannya menggunakan Regex
+    int usiaBulanAnak = hitungUsiaBulan(studentAge.value);
+
+    // 2. Buat teks narasi yang akan dibaca model NLP
+    String teksJurnal = "${studentName.value} melakukan kegiatan ${activityNameC.text}. ${notesC.text}";
+
+    // 3. Estafetkan datanya ke halaman Hasil Analisis!
+    Get.toNamed(
+      '/analysis-result', 
+      arguments: {
+        'teks': teksJurnal,
+        'usia_bulan': usiaBulanAnak, // Tongkat estafet yang akurat!
+        'kategori': selectedMotorikType.value, // "Halus" atau "Kasar"
+      }
+    );
   }
   
   @override

@@ -824,9 +824,20 @@ class StudentDetailView extends GetView<StudentDetailController> {
                   width: double.infinity,
                   height: 55,
                   child: Obx(() => ElevatedButton(
+                    
+                    // ==============================================================
+                    // INI BAGIAN YANG DIMODIFIKASI UNTUK PEMANGGILAN NLP/AI
+                    // ==============================================================
                     onPressed: (controller.isLoading.value || localActivity.value.isEmpty) ? null : () {
-                      if(isEdit) controller.updateAssessment(oldData!); else controller.addAssessment();
+                      if(isEdit) {
+                        controller.updateAssessment(oldData!); 
+                      } else {
+                        controller.addAssessment();
+                        controller.prosesAnalisisAI(); // Estafet data ke NLP terpanggil di sini!
+                      }
                     },
+                    // ==============================================================
+                    
                     style: ElevatedButton.styleFrom(
                       backgroundColor: isEdit ? orenJeruk : pinkCeria, 
                       disabledBackgroundColor: Colors.grey.shade300,

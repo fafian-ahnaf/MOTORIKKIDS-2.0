@@ -192,7 +192,9 @@ class LoginView extends GetView<LoginController> {
                 Positioned(
                   top: 50, left: 20,
                   child: IconButton(
-                    onPressed: () => Get.back(),
+                    // === UBAH BAGIAN INI ===
+                    onPressed: () => Get.offAllNamed(Routes.WELCOME),
+                    // =======================
                     icon: Icon(Icons.arrow_back_rounded, color: controller.themeColor, size: 24),
                     style: IconButton.styleFrom(
                       backgroundColor: Colors.white,
