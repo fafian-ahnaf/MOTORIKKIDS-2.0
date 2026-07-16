@@ -184,19 +184,39 @@ class DevelopmentHistoryView extends GetView<DevelopmentHistoryController> {
 
   Widget _buildHistoryCard(Map<String, dynamic> item) {
     String activity = item['activity']?.toString() ?? "Kegiatan Observasi";
-    String score = item['score']?.toString() ?? "-";
+    
+    // --- PERBAIKAN: MEMBULATKAN ANGKA SKOR ---
+    String scoreStr = "-";
+    double scoreNum = 0.0;
+    if (item['score'] != null) {
+      if (item['score'] is num) {
+        scoreNum = (item['score'] as num).toDouble();
+        scoreStr = scoreNum.toInt().toString(); // Memotong desimal agar tidak kepanjangan
+      } else {
+        scoreStr = item['score'].toString();
+      }
+    }
+
     String notes = item['notes']?.toString() ?? "Tidak ada catatan.";
     String dateStr = item['date'] != null ? DateFormat('dd MMM yyyy').format(DateTime.parse(item['date'].toString())) : "-";
 
-    // Menentukan warna berdasarkan skor
+    // --- PERBAIKAN: LOGIKA WARNA BERDASARKAN ANGKA ---
     Color scoreColor = biruAwan;
     IconData scoreIcon = Icons.star_rounded;
-    String scoreUpper = score.toUpperCase();
     
-    if (scoreUpper.contains("BSB")) { scoreColor = Colors.green.shade400; scoreIcon = Icons.workspace_premium_rounded; }
-    else if (scoreUpper.contains("BSH")) { scoreColor = biruAwan; scoreIcon = Icons.thumb_up_alt_rounded; }
-    else if (scoreUpper.contains("MB")) { scoreColor = orenJeruk; scoreIcon = Icons.trending_up_rounded; }
-    else if (scoreUpper.contains("BB")) { scoreColor = Colors.redAccent; scoreIcon = Icons.local_florist_rounded; }
+    if (scoreNum >= 76) { 
+      scoreColor = Colors.green.shade400; 
+      scoreIcon = Icons.workspace_premium_rounded; 
+    } else if (scoreNum >= 51) { 
+      scoreColor = biruAwan; 
+      scoreIcon = Icons.thumb_up_alt_rounded; 
+    } else if (scoreNum >= 26) { 
+      scoreColor = orenJeruk; 
+      scoreIcon = Icons.trending_up_rounded; 
+    } else if (scoreNum > 0) { 
+      scoreColor = Colors.redAccent; 
+      scoreIcon = Icons.local_florist_rounded; 
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -242,7 +262,7 @@ class DevelopmentHistoryView extends GetView<DevelopmentHistoryController> {
                               children: [
                                 Icon(scoreIcon, size: 14, color: scoreColor),
                                 const SizedBox(width: 4),
-                                Text(score, style: TextStyle(fontWeight: FontWeight.w900, color: scoreColor, fontSize: 13)),
+                                Text("$scoreStr Poin", style: TextStyle(fontWeight: FontWeight.w900, color: scoreColor, fontSize: 13)), // Menampilkan teks skor yang sudah dibulatkan
                               ],
                             ),
                           ),
