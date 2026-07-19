@@ -37,67 +37,67 @@ class AppPages {
   static final routes = [
     GetPage(
       name: _Paths.HOME,
-      page: () => const HomeView(),
+      page: () => HomeView(),
       binding: HomeBinding(),
     ),
     GetPage(
       name: _Paths.WELCOME,
-      page: () => const WelcomeView(),
+      page: () => WelcomeView(),
       binding: WelcomeBinding(),
     ),
     GetPage(
       name: _Paths.LOGIN,
-      page: () => const LoginView(),
+      page: () => LoginView(),
       binding: LoginBinding(),
     ),
     GetPage(
       name: _Paths.REGISTER,
-      page: () => const RegisterView(),
+      page: () => RegisterView(),
       binding: RegisterBinding(),
     ),
     GetPage(
       name: _Paths.TEACHER_DASHBOARD,
-      page: () => const TeacherDashboardView(),
+      page: () => TeacherDashboardView(),
       binding: TeacherDashboardBinding(),
     ),
     GetPage(
       name: _Paths.STUDENT_LIST,
-      page: () => const StudentListView(),
+      page: () => StudentListView(),
       binding: StudentListBinding(),
     ),
     GetPage(
       name: _Paths.ASSESSMENT_FORM,
-      page: () => const AssessmentFormView(),
+      page: () => AssessmentFormView(),
       binding: AssessmentFormBinding(),
     ),
     GetPage(
       name: _Paths.ANALYSIS_RESULT,
-      page: () => const AnalysisResultView(),
+      page: () => AnalysisResultView(),
       binding: AnalysisResultBinding(),
     ),
     GetPage(
       name: _Paths.PARENT_DASHBOARD,
-      page: () => const ParentDashboardView(),
+      page: () => ParentDashboardView(),
       binding: ParentDashboardBinding(),
     ),
     GetPage(
       name: _Paths.DEVELOPMENT_HISTORY,
-      page: () => const DevelopmentHistoryView(),
+      page: () => DevelopmentHistoryView(),
       binding: DevelopmentHistoryBinding(),
     ),
     GetPage(
       name: _Paths.RECOMMENDATION,
-      page: () => const RecommendationView(),
+      page: () => RecommendationView(),
       binding: RecommendationBinding(),
     ),
     GetPage(
       name: _Paths.PROFILE,
-      page: () => const ProfileView(),
+      page: () => ProfileView(),
       binding: ProfileBinding(),
     ),
     GetPage(
       name: _Paths.STUDENT_DETAIL,
-      page: () => const StudentDetailView(),
+      page: () => StudentDetailView(),
       binding: StudentDetailBinding(),
     ),
   ];

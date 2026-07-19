@@ -4,7 +4,10 @@ import 'package:get/get.dart';
 import '../controllers/register_controller.dart';
 
 class RegisterView extends GetView<RegisterController> {
-  const RegisterView({Key? key}) : super(key: key); 
+  RegisterView({Key? key}) : super(key: key); 
+
+  // --- KUNCI FORM UNTUK VALIDASI ---
+  final GlobalKey<FormState> formKey = GlobalKey<FormState>();
 
   final Color bgBase = const Color(0xFFFFF8E7); 
   final Color orenJeruk = const Color(0xFFFFB74D);
@@ -71,211 +74,253 @@ class RegisterView extends GetView<RegisterController> {
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
                       physics: const BouncingScrollPhysics(),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          
-                          Center(
-                            child: Container(
-                              padding: const EdgeInsets.all(20),
+                      // --- BUNGKUS DENGAN FORM ---
+                      child: Form(
+                        key: formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            
+                            Center(
+                              child: Container(
+                                padding: const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: Colors.white, shape: BoxShape.circle,
+                                  border: Border.all(color: controller.themeColor, width: 4),
+                                  boxShadow: [BoxShadow(color: controller.themeColor.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))],
+                                ),
+                                child: Icon(Icons.face_retouching_natural_rounded, size: 60, color: controller.themeColor),
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+
+                            Text(
+                              "Daftar Akun Baru!", 
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: teksGelap)
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              "Yuk isi data untuk bergabung\nsebagai ${controller.roleName}!", 
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.grey.shade600, height: 1.5)
+                            ),
+                            const SizedBox(height: 40),
+
+                            _buildLabel("Nama Lengkap"),
+                            _buildTextField(
+                              controller: controller.nameC, 
+                              hint: "Nama Lengkap", 
+                              icon: Icons.person_rounded,
+                              validator: (value) => value == null || value.isEmpty ? 'Nama tidak boleh kosong' : null,
+                            ),
+                            const SizedBox(height: 20),
+
+                            _buildLabel("Alamat Email"),
+                            _buildTextField(
+                              controller: controller.emailC, 
+                              hint: "nama@email.com", 
+                              icon: Icons.email_rounded, 
+                              inputType: TextInputType.emailAddress,
+                              // --- VALIDASI EMAIL ASLI DARI GETX ---
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Email tidak boleh kosong';
+                                }
+                                if (!GetUtils.isEmail(value)) {
+                                  return 'Format email salah! Gunakan email asli.';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 20),
+
+                            _buildLabel("Nomor WhatsApp"),
+                            _buildTextField(
+                              controller: controller.phoneC, 
+                              hint: "0812xxxx", 
+                              icon: Icons.phone_android_rounded, 
+                              inputType: TextInputType.phone,
+                              validator: (value) => value == null || value.length < 9 ? 'Nomor WA tidak valid' : null,
+                            ),
+                            const SizedBox(height: 20),
+
+                            _buildLabel("Jenis Kelamin"),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
                               decoration: BoxDecoration(
-                                color: Colors.white, shape: BoxShape.circle,
-                                border: Border.all(color: controller.themeColor, width: 4),
-                                boxShadow: [BoxShadow(color: controller.themeColor.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))],
+                                color: Colors.white, 
+                                borderRadius: BorderRadius.circular(25),
+                                border: Border.all(color: controller.themeColor.withOpacity(0.3), width: 3),
                               ),
-                              child: Icon(Icons.face_retouching_natural_rounded, size: 60, color: controller.themeColor),
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-
-                          Text(
-                            "Daftar Akun Baru!", 
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: teksGelap)
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            "Yuk isi data untuk bergabung\nsebagai ${controller.roleName}!", 
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.grey.shade600, height: 1.5)
-                          ),
-                          const SizedBox(height: 40),
-
-                          _buildLabel("Nama Lengkap"),
-                          _buildTextField(controller: controller.nameC, hint: "Nama Lengkap", icon: Icons.person_rounded),
-                          const SizedBox(height: 20),
-
-                          _buildLabel("Alamat Email"),
-                          _buildTextField(controller: controller.emailC, hint: "nama@email.com", icon: Icons.email_rounded, inputType: TextInputType.emailAddress),
-                          const SizedBox(height: 20),
-
-                          _buildLabel("Nomor WhatsApp"),
-                          _buildTextField(controller: controller.phoneC, hint: "0812xxxx", icon: Icons.phone_android_rounded, inputType: TextInputType.phone),
-                          const SizedBox(height: 20),
-
-                          _buildLabel("Jenis Kelamin"),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.white, 
-                              borderRadius: BorderRadius.circular(25),
-                              border: Border.all(color: controller.themeColor.withOpacity(0.3), width: 3),
-                            ),
-                            child: Row(children: [
-                              Icon(Icons.wc_rounded, color: controller.themeColor),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Obx(() => DropdownButtonHideUnderline(
-                                  child: DropdownButton<String>(
-                                    value: controller.gender.value,
-                                    isExpanded: true,
-                                    icon: Icon(Icons.keyboard_arrow_down_rounded, color: controller.themeColor),
-                                    style: const TextStyle(fontWeight: FontWeight.w800, color: Colors.black87), 
-                                    onChanged: (val) { if(val!=null) controller.gender.value = val; },
-                                    items: ['Laki-laki', 'Perempuan'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
-                                  ),
-                                )),
-                              ),
-                            ]),
-                          ),
-                          const SizedBox(height: 20),
-
-                          // =======================================================
-                          // --- KHUSUS GURU: INPUT KELAS ---
-                          // =======================================================
-                          Obx(() {
-                            if (controller.currentRole.value == 'teacher') {
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _buildLabel("Pilih Kelas Pegangan"),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(25),
-                                      border: Border.all(color: controller.themeColor.withOpacity(0.3), width: 3),
+                              child: Row(children: [
+                                Icon(Icons.wc_rounded, color: controller.themeColor),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Obx(() => DropdownButtonHideUnderline(
+                                    child: DropdownButton<String>(
+                                      value: controller.gender.value,
+                                      isExpanded: true,
+                                      icon: Icon(Icons.keyboard_arrow_down_rounded, color: controller.themeColor),
+                                      style: const TextStyle(fontWeight: FontWeight.w800, color: Colors.black87), 
+                                      onChanged: (val) { if(val!=null) controller.gender.value = val; },
+                                      items: ['Laki-laki', 'Perempuan'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
                                     ),
-                                    child: Row(children: [
-                                      Icon(Icons.class_rounded, color: controller.themeColor),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        child: DropdownButtonHideUnderline(
-                                          child: DropdownButton<String>(
-                                            value: controller.selectedKelas.value,
-                                            isExpanded: true,
-                                            icon: Icon(Icons.keyboard_arrow_down_rounded, color: controller.themeColor),
-                                            style: const TextStyle(fontWeight: FontWeight.w800, color: Colors.black87),
-                                            onChanged: (val) {
-                                              if (val != null) controller.selectedKelas.value = val;
-                                            },
-                                            items: controller.daftarKelas.map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+                                  )),
+                                ),
+                              ]),
+                            ),
+                            const SizedBox(height: 20),
+
+                            // =======================================================
+                            // --- KHUSUS GURU: INPUT KELAS ---
+                            // =======================================================
+                            Obx(() {
+                              if (controller.currentRole.value == 'teacher') {
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildLabel("Pilih Kelas Pegangan"),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(25),
+                                        border: Border.all(color: controller.themeColor.withOpacity(0.3), width: 3),
+                                      ),
+                                      child: Row(children: [
+                                        Icon(Icons.class_rounded, color: controller.themeColor),
+                                        const SizedBox(width: 16),
+                                        Expanded(
+                                          child: DropdownButtonHideUnderline(
+                                            child: DropdownButton<String>(
+                                              value: controller.selectedKelas.value,
+                                              isExpanded: true,
+                                              icon: Icon(Icons.keyboard_arrow_down_rounded, color: controller.themeColor),
+                                              style: const TextStyle(fontWeight: FontWeight.w800, color: Colors.black87),
+                                              onChanged: (val) {
+                                                if (val != null) controller.selectedKelas.value = val;
+                                              },
+                                              items: controller.daftarKelas.map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                    ]),
-                                  ),
-                                  const SizedBox(height: 20),
-                                ],
-                              );
-                            }
-                            return const SizedBox.shrink();
-                          }),
-                          // =======================================================
-
-                          _buildLabel("Buat Password"),
-                          Obx(() => _buildTextField(
-                            controller: controller.passC, hint: "Minimal 6 karakter", icon: Icons.lock_rounded, 
-                            isObscure: controller.isObscure.value,
-                            suffixIcon: IconButton(icon: Icon(controller.isObscure.value ? Icons.visibility_off_rounded : Icons.visibility_rounded, color: Colors.grey), onPressed: () => controller.togglePass()),
-                          )),
-                          const SizedBox(height: 20),
-
-                          _buildLabel("Ulangi Password"),
-                          Obx(() => _buildTextField(
-                            controller: controller.confirmPassC, hint: "Pastikan password sama", icon: Icons.verified_user_rounded, 
-                            isObscure: controller.isObscureConfirm.value,
-                            suffixIcon: IconButton(icon: Icon(controller.isObscureConfirm.value ? Icons.visibility_off_rounded : Icons.visibility_rounded, color: Colors.grey), onPressed: () => controller.toggleConfirmPass()),
-                          )),
-                          const SizedBox(height: 30),
-
-                          // =======================================================
-                          // --- KHUSUS ORANG TUA: INPUT TOKEN ANAK ---
-                          // =======================================================
-                          Obx(() {
-                            if (controller.currentRole.value == 'parent') {
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(16),
-                                    decoration: BoxDecoration(
-                                      color: biruAwan.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(color: biruAwan.withOpacity(0.3), width: 2)
+                                      ]),
                                     ),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            Icon(Icons.info_outline_rounded, color: biruAwan, size: 20),
-                                            const SizedBox(width: 8),
-                                            Expanded(child: Text("Hubungkan dengan data Anak", style: TextStyle(fontWeight: FontWeight.bold, color: biruAwan))),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 12),
-                                        _buildLabel("Masukkan Token Anak"),
-                                        _buildTextField(
-                                          controller: controller.tokenAnakC, 
-                                          hint: "Contoh: AX92BZ", 
-                                          icon: Icons.key_rounded,
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text("*Dapatkan token ini dari Guru kelas anak Anda.", style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontStyle: FontStyle.italic)),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(height: 30),
-                                ],
-                              );
-                            } else {
+                                    const SizedBox(height: 20),
+                                  ],
+                                );
+                              }
                               return const SizedBox.shrink();
-                            }
-                          }),
-                          // =======================================================
+                            }),
+                            // =======================================================
 
-                          // --- TOMBOL DAFTAR ---
-                          Obx(() => SizedBox(
-                            width: double.infinity, height: 60, 
-                            child: ElevatedButton(
-                              onPressed: controller.isLoading.value ? null : () => controller.register(),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: controller.themeColor, 
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)), 
-                                elevation: 5,
-                                shadowColor: controller.themeColor.withOpacity(0.5)
+                            _buildLabel("Buat Password"),
+                            Obx(() => _buildTextField(
+                              controller: controller.passC, hint: "Minimal 6 karakter", icon: Icons.lock_rounded, 
+                              isObscure: controller.isObscure.value,
+                              validator: (value) => value == null || value.length < 6 ? 'Password minimal 6 karakter' : null,
+                              suffixIcon: IconButton(icon: Icon(controller.isObscure.value ? Icons.visibility_off_rounded : Icons.visibility_rounded, color: Colors.grey), onPressed: () => controller.togglePass()),
+                            )),
+                            const SizedBox(height: 20),
+
+                            _buildLabel("Ulangi Password"),
+                            Obx(() => _buildTextField(
+                              controller: controller.confirmPassC, hint: "Pastikan password sama", icon: Icons.verified_user_rounded, 
+                              isObscure: controller.isObscureConfirm.value,
+                              validator: (value) {
+                                if (value == null || value.isEmpty) return 'Ulangi password Anda';
+                                if (value != controller.passC.text) return 'Password tidak cocok!';
+                                return null;
+                              },
+                              suffixIcon: IconButton(icon: Icon(controller.isObscureConfirm.value ? Icons.visibility_off_rounded : Icons.visibility_rounded, color: Colors.grey), onPressed: () => controller.toggleConfirmPass()),
+                            )),
+                            const SizedBox(height: 30),
+
+                            // =======================================================
+                            // --- KHUSUS ORANG TUA: INPUT TOKEN ANAK ---
+                            // =======================================================
+                            Obx(() {
+                              if (controller.currentRole.value == 'parent') {
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(16),
+                                      decoration: BoxDecoration(
+                                        color: biruAwan.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(color: biruAwan.withOpacity(0.3), width: 2)
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Icon(Icons.info_outline_rounded, color: biruAwan, size: 20),
+                                              const SizedBox(width: 8),
+                                              Expanded(child: Text("Hubungkan dengan data Anak", style: TextStyle(fontWeight: FontWeight.bold, color: biruAwan))),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 12),
+                                          _buildLabel("Masukkan Token Anak"),
+                                          _buildTextField(
+                                            controller: controller.tokenAnakC, 
+                                            hint: "Contoh: AX92BZ", 
+                                            icon: Icons.key_rounded,
+                                            validator: (value) => value == null || value.isEmpty ? 'Token tidak boleh kosong' : null,
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text("*Dapatkan token ini dari Guru kelas anak Anda.", style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontStyle: FontStyle.italic)),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 30),
+                                  ],
+                                );
+                              } else {
+                                return const SizedBox.shrink();
+                              }
+                            }),
+                            // =======================================================
+
+                            // --- TOMBOL DAFTAR ---
+                            Obx(() => SizedBox(
+                              width: double.infinity, height: 60, 
+                              child: ElevatedButton(
+                                // --- CEK VALIDASI SEBELUM EKSEKUSI REGISTER ---
+                                onPressed: controller.isLoading.value ? null : () {
+                                  if (formKey.currentState!.validate()) {
+                                    controller.register(); // Panggil fungsi di controller jika semua valid
+                                  }
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: controller.themeColor, 
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)), 
+                                  elevation: 5,
+                                  shadowColor: controller.themeColor.withOpacity(0.5)
+                                ),
+                                child: controller.isLoading.value 
+                                  ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3)) 
+                                  : const Text("BUAT AKUN!", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18, letterSpacing: 1)),
                               ),
-                              child: controller.isLoading.value 
-                                ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3)) 
-                                : const Text("BUAT AKUN!", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18, letterSpacing: 1)),
+                            )),
+                            
+                            const SizedBox(height: 20),
+
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text("Sudah punya akun?", style: TextStyle(fontWeight: FontWeight.w700, color: Colors.grey.shade600)),
+                                TextButton(
+                                  onPressed: () => Get.back(), 
+                                  child: Text("Masuk", style: TextStyle(fontWeight: FontWeight.w900, color: controller.themeColor, fontSize: 16)),
+                                ),
+                              ],
                             ),
-                          )),
-                          
-                          const SizedBox(height: 20),
-
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text("Sudah punya akun?", style: TextStyle(fontWeight: FontWeight.w700, color: Colors.grey.shade600)),
-                              TextButton(
-                                onPressed: () => Get.back(), 
-                                child: Text("Masuk", style: TextStyle(fontWeight: FontWeight.w900, color: controller.themeColor, fontSize: 16)),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 20),
-                        ],
+                            const SizedBox(height: 20),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -301,13 +346,16 @@ class RegisterView extends GetView<RegisterController> {
     required IconData icon, 
     bool isObscure = false, 
     TextInputType inputType = TextInputType.text, 
-    Widget? suffixIcon
+    Widget? suffixIcon,
+    // --- TAMBAHAN PARAMETER UNTUK VALIDATOR ---
+    String? Function(String?)? validator,
   }) {
     Color themeColor = this.controller.themeColor;
-    return TextField(
+    return TextFormField( // MENGGUNAKAN TextFormField ALIH-ALIH TextField
       controller: controller, 
       obscureText: isObscure, 
       keyboardType: inputType, 
+      validator: validator, // MENGHUBUNGKAN VALIDATOR
       style: const TextStyle(fontWeight: FontWeight.w800, color: Colors.black87),
       decoration: InputDecoration(
         hintText: hint, 
@@ -316,6 +364,7 @@ class RegisterView extends GetView<RegisterController> {
         suffixIcon: suffixIcon, 
         filled: true,
         fillColor: Colors.white,
+        errorStyle: const TextStyle(fontWeight: FontWeight.bold), // Gaya teks error
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(25),
@@ -324,6 +373,14 @@ class RegisterView extends GetView<RegisterController> {
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(25),
           borderSide: BorderSide(color: themeColor, width: 3),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(25),
+          borderSide: const BorderSide(color: Colors.redAccent, width: 2),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(25),
+          borderSide: const BorderSide(color: Colors.redAccent, width: 3),
         ),
       )
     );

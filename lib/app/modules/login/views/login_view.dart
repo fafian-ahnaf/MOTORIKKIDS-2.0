@@ -137,9 +137,9 @@ class LoginView extends GetView<LoginController> {
                         Align(
                           alignment: Alignment.centerRight,
                           child: TextButton(
+                            // --- PERBAIKAN: MENGHUBUNGKAN DENGAN FUNGSI DI CONTROLLER ---
                             onPressed: () {
-                              // Navigasi ke halaman lupa kata sandi
-                              Get.to(() => ForgotPasswordView());
+                              controller.resetPassword();
                             }, 
                             child: Text(
                               "Lupa Kata Sandi?", 

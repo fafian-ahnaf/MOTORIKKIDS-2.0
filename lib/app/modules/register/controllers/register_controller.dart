@@ -132,6 +132,12 @@ class RegisterController extends GetxController {
         password: passC.text.trim(),
       );
 
+      // =========================================================
+      // --- TAMBAHAN: KIRIM EMAIL VERIFIKASI KE GMAIL USER ---
+      // =========================================================
+      await userCredential.user?.sendEmailVerification();
+      // =========================================================
+
       String uid = userCredential.user!.uid;
 
       // 6. Simpan Profil ke Firestore 'users'
@@ -145,7 +151,7 @@ class RegisterController extends GetxController {
         'created_at': FieldValue.serverTimestamp(),
       };
 
-      // --- TAMBAHAN: JIKA GURU, SIMPAN DATA KELAS ---
+      // --- JIKA GURU, SIMPAN DATA KELAS ---
       if (currentRole.value == 'teacher') {
         userData['kelas'] = selectedKelas.value;
       }
@@ -159,16 +165,22 @@ class RegisterController extends GetxController {
         });
       }
 
-      Get.snackbar("Berhasil 🎉", "Akun berhasil dibuat. Silakan Login.", backgroundColor: Colors.green.shade100);
+      // --- UBAH PESAN SNACKBAR AGAR USER MENGECEK EMAILNYA ---
+      Get.snackbar(
+        "Pendaftaran Berhasil 🎉", 
+        "Link verifikasi telah dikirim ke Email Anda. Silakan cek Inbox atau Spam untuk mengaktifkan akun.", 
+        backgroundColor: Colors.green.shade100,
+        duration: const Duration(seconds: 5), // Ditahan lebih lama agar terbaca
+      );
       
-      await _auth.signOut();
+      await _auth.signOut(); // Pastikan user logout dulu sampai dia verifikasi
       Get.offAllNamed(Routes.LOGIN);
 
     } on FirebaseAuthException catch (e) {
       String msg = "Terjadi kesalahan.";
       if (e.code == 'email-already-in-use') msg = "Email sudah terdaftar.";
       if (e.code == 'weak-password') msg = "Password terlalu lemah.";
-      if (e.code == 'invalid-email') msg = "Format email salah.";
+      if (e.code == 'invalid-email') msg = "Format email salah. Gunakan email asli.";
       
       Get.snackbar("Gagal Daftar", msg, backgroundColor: Colors.red.shade100, colorText: Colors.red[900]);
     } catch (e) {
