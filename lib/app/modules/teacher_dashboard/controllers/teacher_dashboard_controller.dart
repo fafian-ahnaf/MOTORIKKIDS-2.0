@@ -29,7 +29,11 @@ class TeacherDashboardController extends GetxController {
   final nameC = TextEditingController();
   Rx<DateTime?> selectedBirthDate = Rx<DateTime?>(null); 
   RxString ageText = "".obs; 
-  var selectedKelas = 'TK A'.obs;      
+  
+  // ==========================================================
+  // PERBAIKAN: NILAI DEFAULT DIUBAH JADI 'Kelas A'
+  // ==========================================================
+  var selectedKelas = 'Kelas A'.obs;       
   var selectedGender = 'Laki-laki'.obs; 
 
   // ==========================================================
@@ -108,14 +112,23 @@ class TeacherDashboardController extends GetxController {
     nameC.clear();
     selectedBirthDate.value = null;
     ageText.value = "";
-    selectedKelas.value = 'TK A';
+    selectedKelas.value = 'Kelas A'; // PERBAIKAN: Default saat reset
     selectedGender.value = 'Laki-laki';
   }
 
   void fillFormToEdit(Map<String, dynamic> data) {
     nameC.text = data['name'] ?? "";
     ageText.value = data['age'] ?? "";
-    selectedKelas.value = data['kelas'] ?? "TK A";
+    
+    // ==========================================================
+    // PERBAIKAN: PENERJEMAH DATA LAMA AGAR TIDAK ERROR SAAT EDIT
+    // ==========================================================
+    String kelasLama = data['kelas'] ?? "Kelas A";
+    if (kelasLama == 'TK A') kelasLama = 'Kelas A';
+    if (kelasLama == 'TK B') kelasLama = 'Kelas B';
+    selectedKelas.value = kelasLama;
+    // ==========================================================
+
     selectedGender.value = data['gender'] ?? "Laki-laki";
     if (data['birthDate'] != null) {
       try { selectedBirthDate.value = DateTime.parse(data['birthDate']); } catch (_) { selectedBirthDate.value = null; }
@@ -190,7 +203,7 @@ class TeacherDashboardController extends GetxController {
       isLoading.value = true;
       String teksObservasi = observasiKelompokC.text.trim();
 
-      // 1. Tembak API IndoBERT (Satu kali saja untuk semua anak terpilih)
+      // 1. Tembak API IndoBERT
       final String apiUrl = "https://motorikkids.my.id/predict";
       final response = await http.post(
         Uri.parse(apiUrl),
@@ -208,7 +221,15 @@ class TeacherDashboardController extends GetxController {
 
         for (String id in selectedIds) {
           DocumentReference studentRef = firestore.collection('students').doc(id);
-          batch.update(studentRef, {'status': statusPrediksi});
+          
+          // --- GENERATE SARAN BERMAIN OTOMATIS BERDASARKAN STATUS ---
+          Map<String, dynamic> rekomendasiOtomatis = _generateSaranBermain(statusPrediksi);
+
+          // Update status DAN masukkan saran bermainnya!
+          batch.update(studentRef, {
+            'status': statusPrediksi,
+            'recommendation': rekomendasiOtomatis,
+          });
 
           DocumentReference riwayatRef = studentRef.collection('riwayat').doc();
           batch.set(riwayatRef, {
@@ -225,7 +246,7 @@ class TeacherDashboardController extends GetxController {
         toggleSelectionMode(); 
         Get.back(); // Tutup pop-up
 
-        Get.snackbar("Berhasil! 🎉", "Observasi kelompok berhasil diproses oleh IndoBERT dan disimpan ke ${selectedIds.length} anak.", 
+        Get.snackbar("Berhasil! 🎉", "Observasi kelompok diproses oleh IndoBERT, dan Saran Bermain telah dikirim ke Orang Tua.", 
           backgroundColor: Colors.green.shade400, colorText: Colors.white, duration: const Duration(seconds: 4));
 
       } else {
@@ -391,7 +412,7 @@ class TeacherDashboardController extends GetxController {
     try {
       isLoading.value = true;
       
-      String templateData = "Nama,Kelas,Gender,Tanggal Lahir\nBudi Santoso,TK A,Laki-laki,2021-03-15\nSiti Aminah,TK A,Perempuan,2021-05-20\n";
+      String templateData = "Nama,Kelas,Gender,Tanggal Lahir\nBudi Santoso,Kelas A,Laki-laki,2021-03-15\nSiti Aminah,Kelas A,Perempuan,2021-05-20\n";
 
       if (Platform.isAndroid) {
         Directory downloadDir = Directory('/storage/emulated/0/Download');
@@ -425,7 +446,7 @@ class TeacherDashboardController extends GetxController {
       isLoading.value = false;
       
       try {
-        String templateData = "Nama,Kelas,Gender,Tanggal Lahir\nBudi Santoso,TK A,Laki-laki,2021-03-15\nSiti Aminah,TK A,Perempuan,2021-05-20\n";
+        String templateData = "Nama,Kelas,Gender,Tanggal Lahir\nBudi Santoso,Kelas A,Laki-laki,2021-03-15\nSiti Aminah,Kelas A,Perempuan,2021-05-20\n";
         final directory = await getTemporaryDirectory();
         final path = '${directory.path}/Template_MotorikKids.csv';
         await File(path).writeAsString(templateData);
@@ -603,10 +624,61 @@ class TeacherDashboardController extends GetxController {
     return Colors.green;
   }
 
+  // ==========================================================
+  // FUNGSI CERDAS: GENERATE SARAN BERMAIN BERDASARKAN HASIL AI
+  // ==========================================================
+  Map<String, dynamic> _generateSaranBermain(String status) {
+    if (status.contains("BB")) { // Belum Berkembang
+      return {
+        'title': "Bermain Titian Garis 🛤️",
+        'desc': "Membantu Ananda melatih keseimbangan dasar yang belum berkembang optimal.",
+        'tujuan': "Melatih fokus, keseimbangan tubuh, dan koordinasi mata-kaki.",
+        'cara': "Buat garis lurus di lantai menggunakan lakban sepanjang 2 meter. Minta Ananda berjalan di atas garis tersebut tanpa keluar jalur. Pegang tangannya jika masih goyah.",
+        'durasi': "10 - 15 Menit",
+        'lokasi': "Ruang Kelas", 
+        'isDone': false,
+        'feedback': '',
+      };
+    } else if (status.contains("MB")) { // Mulai Berkembang
+      return {
+        'title': "Lompat Katak Ceria 🐸",
+        'desc': "Stimulasi seru untuk memperkuat otot kaki Ananda yang mulai berkembang.",
+        'tujuan': "Meningkatkan kekuatan otot tungkai dan kelincahan.",
+        'cara': "Ajak Ananda jongkok lalu melompat ke depan seperti katak. Berikan target jarak dekat (misal melompat ke arah bantal) agar Ananda semangat.",
+        'durasi': "15 Menit",
+        'lokasi': "Ruang Kelas",
+        'isDone': false,
+        'feedback': '',
+      };
+    } else if (status.contains("BSH")) { // Berkembang Sesuai Harapan
+      return {
+        'title': "Lempar Tangkap Bola 🏐",
+        'desc': "Mempertahankan dan menstimulasi kemampuan motorik yang sudah sesuai harapan.",
+        'tujuan': "Melatih refleks, akurasi, dan koordinasi kedua tangan.",
+        'cara': "Gunakan bola plastik atau kain yang lembut. Berdiri sekitar 1-2 meter dari Ananda, lalu lempar bola tepat ke arah dadanya agar ditangkap dengan dua tangan.",
+        'durasi': "15 Menit",
+        'lokasi': "Ruang Kelas",
+        'isDone': false,
+        'feedback': '',
+      };
+    } else { // BSB (Berkembang Sangat Baik) atau default
+      return {
+        'title': "Halang Rintang Ninja! 🥷",
+        'desc': "Tantangan tingkat lanjut untuk Ananda yang perkembangannya sangat baik.",
+        'tujuan': "Mengoptimalkan kelincahan, kecepatan, dan pemecahan masalah.",
+        'cara': "Susun bantal, kursi kecil, atau kardus di ruangan. Minta Ananda melewati rintangan tersebut dengan melompat, merangkak, atau berlari zig-zag secepat mungkin tanpa menyentuh benda.",
+        'durasi': "20 Menit",
+        'lokasi': "Ruang Kelas",
+        'isDone': false,
+        'feedback': '',
+      };
+    }
+  }
+
   @override
   void onClose() { 
     nameC.dispose(); 
-    observasiKelompokC.dispose(); // <-- Dispose input baru
+    observasiKelompokC.dispose(); 
     super.onClose(); 
   }
 }

@@ -17,7 +17,7 @@ class RegisterController extends GetxController {
 
   // --- TAMBAHAN UNTUK GURU: PILIHAN KELAS ---
   var selectedKelas = 'Kelas A'.obs; 
-  final List<String> daftarKelas = ['Kelas A', 'Kelas B', 'Kelas C', 'Kelas D']; 
+  final List<String> daftarKelas = ['Kelas A', 'Kelas B']; 
 
   var studentList = <Map<String, String>>[].obs; 
   var selectedStudentId = Rxn<String>(); 

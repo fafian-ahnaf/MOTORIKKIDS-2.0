@@ -769,7 +769,7 @@ class StudentDetailView extends GetView<StudentDetailController> {
                         activeColor: isActivitySelected ? biruAwan : Colors.grey.shade400, 
                         inactiveColor: isActivitySelected ? biruAwan.withOpacity(0.2) : Colors.grey.shade200, 
                         onChanged: isActivitySelected ? (val) {
-                          controller.inputScore.value = val;
+                          controller.inputScore.value = val.roundToDouble(); // <--- PERBAIKAN DI SINI
                           generateAutoNote(); 
                         } : null,
                       ),

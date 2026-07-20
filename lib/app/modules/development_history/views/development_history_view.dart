@@ -5,6 +5,9 @@ import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart'; 
 import '../controllers/development_history_controller.dart';
 
+// --- IMPORT PDF SERVICE DARI FOLDER SERVICES ---
+import '../../../services/pdf_report_service.dart'; 
+
 class DevelopmentHistoryView extends GetView<DevelopmentHistoryController> {
   const DevelopmentHistoryView({Key? key}) : super(key: key);
 
@@ -26,7 +29,8 @@ class DevelopmentHistoryView extends GetView<DevelopmentHistoryController> {
       backgroundColor: bgBase,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text("Riwayat & Tren 📈", style: TextStyle(color: teksGelap, fontWeight: FontWeight.w900, fontSize: 20)), 
+        // --- JUDUL SUDAH DIPERBARUI ---
+        title: Text("Riwayat Perkembangan Ananda", style: TextStyle(color: teksGelap, fontWeight: FontWeight.w900, fontSize: 18)), 
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -42,6 +46,47 @@ class DevelopmentHistoryView extends GetView<DevelopmentHistoryController> {
           ),
           onPressed: () => Get.back(),
         ),
+        
+        // ==========================================================
+        // --- TOMBOL CETAK PDF DI POJOK KANAN ATAS ---
+        // ==========================================================
+        actions: [
+          Container(
+            margin: const EdgeInsets.only(right: 16),
+            decoration: BoxDecoration(
+              color: biruAwan, 
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(color: biruAwan.withOpacity(0.4), blurRadius: 8, offset: const Offset(0, 3))
+              ]
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.print_rounded, color: Colors.white, size: 22),
+              tooltip: "Cetak Laporan PDF",
+              onPressed: () {
+                // Pastikan data tidak kosong sebelum mencetak
+                if (controller.assessmentList.isEmpty) {
+                  Get.snackbar(
+                    "Data Kosong", 
+                    "Belum ada riwayat perkembangan untuk dicetak.",
+                    backgroundColor: Colors.orange.shade100,
+                  );
+                  return;
+                }
+
+                // Panggil Service PDF
+                List<Map<String, dynamic>> dataRiwayat = List<Map<String, dynamic>>.from(controller.assessmentList);
+                
+                PdfReportService.generateAndPrintReport(
+                  namaAnak: controller.studentName.value, 
+                  namaGuru: controller.teacherName.value, 
+                  riwayatData: dataRiwayat,
+                );
+              },
+            ),
+          ),
+        ],
+        // ==========================================================
       ),
       body: Stack(
         children: [
@@ -262,7 +307,7 @@ class DevelopmentHistoryView extends GetView<DevelopmentHistoryController> {
                               children: [
                                 Icon(scoreIcon, size: 14, color: scoreColor),
                                 const SizedBox(width: 4),
-                                Text("$scoreStr Poin", style: TextStyle(fontWeight: FontWeight.w900, color: scoreColor, fontSize: 13)), // Menampilkan teks skor yang sudah dibulatkan
+                                Text("$scoreStr Poin", style: TextStyle(fontWeight: FontWeight.w900, color: scoreColor, fontSize: 13)), 
                               ],
                             ),
                           ),

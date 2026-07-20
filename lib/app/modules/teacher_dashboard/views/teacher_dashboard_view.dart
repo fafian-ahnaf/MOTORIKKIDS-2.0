@@ -513,7 +513,13 @@ class TeacherDashboardView extends GetView<TeacherDashboardController> {
 
                 Row(
                   children: [
-                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_label("Kelas"), Obx(() => _dropdown(controller.selectedKelas, ["TK A", "TK B"]))])),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      _label("Kelas"), 
+                      // ======================================================
+                      // PERUBAHAN DROPDOWN KELAS A & B ADA DI BARIS BAWAH INI
+                      // ======================================================
+                      Obx(() => _dropdown(controller.selectedKelas, ["Kelas A", "Kelas B"]))
+                    ])),
                     const SizedBox(width: 16),
                     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_label("Jenis Kelamin"), Obx(() => _dropdown(controller.selectedGender, ["Laki-laki", "Perempuan"]))])),
                   ],
