@@ -769,7 +769,7 @@ class StudentDetailView extends GetView<StudentDetailController> {
                         activeColor: isActivitySelected ? biruAwan : Colors.grey.shade400, 
                         inactiveColor: isActivitySelected ? biruAwan.withOpacity(0.2) : Colors.grey.shade200, 
                         onChanged: isActivitySelected ? (val) {
-                          controller.inputScore.value = val.roundToDouble(); // <--- PERBAIKAN DI SINI
+                          controller.inputScore.value = val.roundToDouble(); 
                           generateAutoNote(); 
                         } : null,
                       ),
@@ -824,20 +824,13 @@ class StudentDetailView extends GetView<StudentDetailController> {
                   width: double.infinity,
                   height: 55,
                   child: Obx(() => ElevatedButton(
-                    
-                    // ==============================================================
-                    // INI BAGIAN YANG DIMODIFIKASI UNTUK PEMANGGILAN NLP/AI
-                    // ==============================================================
                     onPressed: (controller.isLoading.value || localActivity.value.isEmpty) ? null : () {
                       if(isEdit) {
                         controller.updateAssessment(oldData!); 
                       } else {
-                        controller.addAssessment();
-                        controller.prosesAnalisisAI(); // Estafet data ke NLP terpanggil di sini!
+                        controller.prosesAnalisisAI();
                       }
                     },
-                    // ==============================================================
-                    
                     style: ElevatedButton.styleFrom(
                       backgroundColor: isEdit ? orenJeruk : pinkCeria, 
                       disabledBackgroundColor: Colors.grey.shade300,
@@ -935,8 +928,10 @@ class StudentDetailView extends GetView<StudentDetailController> {
     );
   }
 
+  // ==============================================================
+  // REVISI DOSEN PENGUJI: ANALISIS PER KOMPONEN MOTORIK
+  // ==============================================================
   void _showAnalysisResultDialog(BuildContext context, String age, double fineAvg, double grossAvg) {
-    String summary = _generateSimpleSummary(fineAvg, grossAvg);
     String status = controller.currentStatus.value;
     Color statusColor = _getStatusColor(status);
 
@@ -967,18 +962,54 @@ class StudentDetailView extends GetView<StudentDetailController> {
               Center(child: Text("Kesimpulan Observasi ✨", style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: teksGelap))),
               const SizedBox(height: 24),
               
-              const Text("Narasi Tumbuh Kembang:", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
+              const Text("Analisis Per Komponen:", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
               const SizedBox(height: 8),
+              
+              // KOTAK ANALISIS MOTORIK HALUS
               Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(color: bgBase, borderRadius: BorderRadius.circular(20)),
-                child: Text(summary, style: TextStyle(color: teksGelap, height: 1.5, fontSize: 14, fontWeight: FontWeight.w600), textAlign: TextAlign.justify),
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.purple.shade50, 
+                  borderRadius: BorderRadius.circular(16), 
+                  border: Border.all(color: Colors.purple.shade200)
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("✍️ Motorik Halus (${(fineAvg * 100).toInt()}%)", style: TextStyle(fontWeight: FontWeight.w900, color: Colors.purple.shade700)),
+                    const SizedBox(height: 4),
+                    Text(_analyzeFineMotor(fineAvg), style: TextStyle(fontSize: 13, color: teksGelap, height: 1.4)),
+                  ]
+                )
               ),
+              const SizedBox(height: 10),
+
+              // KOTAK ANALISIS MOTORIK KASAR
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: orenJeruk.withOpacity(0.1), 
+                  borderRadius: BorderRadius.circular(16), 
+                  border: Border.all(color: orenJeruk.withOpacity(0.5))
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("🏃 Motorik Kasar (${(grossAvg * 100).toInt()}%)", style: TextStyle(fontWeight: FontWeight.w900, color: Colors.orange.shade800)),
+                    const SizedBox(height: 4),
+                    Text(_analyzeGrossMotor(grossAvg), style: TextStyle(fontSize: 13, color: teksGelap, height: 1.4)),
+                  ]
+                )
+              ),
+
               const SizedBox(height: 20),
               
               const Text("Status Skala Capaian 🎯", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
               const SizedBox(height: 8),
               Container(
+                width: double.infinity,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
                   color: statusColor,
@@ -1036,16 +1067,20 @@ class StudentDetailView extends GetView<StudentDetailController> {
     );
   }
 
-  // --- LOGIC HELPER DENGAN NARASI PAUD ---
+  // --- LOGIC HELPER NARASI INDIVIDUAL MOTORIK ---
 
-  String _generateSimpleSummary(double fine, double gross) {
-    // Karena logic keseluruhan aplikasi Anda menggunakan range persentase (0.0 - 1.0) untuk gross & fine,
-    // Saya sesuaikan kembali logic ini agar tetap sinkron.
-    if (fine >= 0.76 && gross >= 0.76) return "Alhamdulillah, secara umum motorik Ananda Berkembang Sangat Baik (BSB). Baik motorik kasar maupun halus berjalan seimbang. Ananda siap diberikan tantangan stimulasi baru yang lebih kompleks! 🌟";
-    if (fine < 0.51 && gross < 0.51) return "Saat ini Ananda sedang dalam tahap Mulai Berkembang (MB). Membutuhkan kolaborasi erat antara guru dan orang tua untuk rutin menstimulasi motorik dasarnya setiap hari. 💪";
-    if (gross > fine + 0.2) return "Motorik Kasar Ananda berkembang sangat pesat (sangat aktif bergerak)! Namun, motorik halusnya masih perlu distimulasi. Yuk perbanyak kegiatan meronce, menjepit, atau mewarnai. 🎨";
-    if (fine > gross + 0.2) return "Motorik Halus Ananda sangat tajam dan detail! Namun, agar kemandirian fisiknya juga optimal, mari ajak Ananda lebih sering melakukan aktivitas fisik di luar ruangan seperti melompat dan berlari. ⚽";
-    return "Perkembangan motorik Ananda berjalan dengan stabil dan Berkembang Sesuai Harapan (BSH). Terus berikan lingkungan bermain yang bermakna dan menyenangkan! 🎈";
+  String _analyzeFineMotor(double score) {
+    if (score >= 0.76) return "Sangat terampil dan mandiri dalam aktivitas presisi (koordinasi mata dan tangan) seperti menggambar atau menggunting.";
+    if (score >= 0.51) return "Kemampuan motorik halus berkembang baik dan sesuai harapan. Sudah bisa diarahkan untuk kegiatan detail.";
+    if (score >= 0.26) return "Mulai menunjukkan minat pada aktivitas yang melibatkan jari-jemari, namun masih butuh banyak contoh dan arahan.";
+    return "Masih membutuhkan stimulasi intensif dan kesabaran ekstra untuk melenturkan otot-otot jari serta tangannya.";
+  }
+
+  String _analyzeGrossMotor(double score) {
+    if (score >= 0.76) return "Sangat lincah, seimbang, dan memiliki kontrol yang sangat baik atas gerakan fisik tubuh besarnya.";
+    if (score >= 0.51) return "Keseimbangan dan kekuatan otot kaki/tangan berkembang sesuai tahap usianya.";
+    if (score >= 0.26) return "Mulai berani melakukan aktivitas fisik bergerak, namun keseimbangan tubuhnya masih perlu dilatih.";
+    return "Belum terlalu aktif bergerak dan membutuhkan banyak dorongan untuk melakukan aktivitas fisik dasar.";
   }
 
   Color _getStatusColor(String status) {

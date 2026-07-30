@@ -25,6 +25,9 @@ class RecommendationController extends GetxController {
   var parentFeedbackText = "".obs;
   final feedbackC = TextEditingController(); 
 
+  // --- TAMBAHAN REVISI: VARIABEL RIWAYAT UNTUK ORANG TUA ---
+  var assessmentHistory = <Map<String, dynamic>>[].obs;
+
   @override
   void onInit() {
     super.onInit();
@@ -38,6 +41,7 @@ class RecommendationController extends GetxController {
 
     if (role == 'parent') {
       fetchSavedRecommendation();
+      fetchAssessmentHistory(); // <-- Memanggil riwayat aktivitas untuk Orang Tua
     } else {
       getNewRecommendation(); 
     }
@@ -90,7 +94,6 @@ class RecommendationController extends GetxController {
         final data = jsonDecode(response.body);
         String statusNLP = data['data']['prediksi_status'] ?? "BSH"; 
         
-        // Panggil fungsi dinamis yang menggabungkan Umur + Kategori + Status NLP
         recommendationData.value = _generateDynamicRecommendation(statusNLP);
         
       } else {
@@ -106,9 +109,6 @@ class RecommendationController extends GetxController {
     }
   }
 
-  // =========================================================================
-  // FUNGSI INTI SDIDTK: PENGHASIL REKOMENDASI BERDASARKAN UMUR & NLP
-  // =========================================================================
   Map<String, String> _generateDynamicRecommendation(String status) {
     int umurBulan = _hitungUsiaBulanPintar(_currentAge);
     String kategoriTerlemah = _currentFineScore <= _currentGrossScore ? "Halus" : "Kasar";
@@ -120,9 +120,6 @@ class RecommendationController extends GetxController {
     String durasi = "";
     String lokasi = kategoriTerlemah == "Kasar" ? "Halaman Rumah / Lapangan" : "Ruang Kelas / Meja Belajar";
 
-    // ---------------------------------------------------------
-    // RENTANG: 60 - 72 BULAN (5 - 6 Tahun)
-    // ---------------------------------------------------------
     if (umurBulan >= 60 && umurBulan <= 72) {
       if (kategoriTerlemah == "Kasar") {
         if (status == "BB" || status == "MB") {
@@ -154,9 +151,6 @@ class RecommendationController extends GetxController {
         }
       }
     } 
-    // ---------------------------------------------------------
-    // RENTANG: 49 - 59 BULAN (4 Tahun)
-    // ---------------------------------------------------------
     else if (umurBulan > 48 && umurBulan < 60) {
       if (kategoriTerlemah == "Kasar") {
         if (status == "BB" || status == "MB") {
@@ -188,9 +182,6 @@ class RecommendationController extends GetxController {
         }
       }
     } 
-    // ---------------------------------------------------------
-    // RENTANG: 36 - 48 BULAN (3-4 Tahun) & DEFAULT
-    // ---------------------------------------------------------
     else {
       if (kategoriTerlemah == "Kasar") {
         if (status == "BB" || status == "MB") {
@@ -231,6 +222,42 @@ class RecommendationController extends GetxController {
       "durasi": durasi,
       "lokasi": lokasi,
     };
+  }
+
+  // --- TAMBAHAN REVISI: FUNGSI TARIK DATA RIWAYAT ---
+  void fetchAssessmentHistory() async {
+    if (studentId == null) return;
+    try {
+      var snapshot = await firestore
+          .collection('students')
+          .doc(studentId)
+          .collection('riwayat')
+          .orderBy('date', descending: true)
+          .limit(5) // Ambil 5 riwayat terakhir agar tidak terlalu panjang
+          .get();
+
+      assessmentHistory.assignAll(
+        snapshot.docs.map((doc) {
+          var data = doc.data();
+          data['id'] = doc.id;
+          return data;
+        }).toList()
+      );
+    } catch (e) {
+      debugPrint("Gagal mengambil riwayat: $e");
+    }
+  }
+
+  // Format tanggal agar lebih rapi saat dibaca Orang Tua
+  String formatDate(String? isoDate) {
+    if (isoDate == null || isoDate.isEmpty) return "-";
+    try {
+      DateTime date = DateTime.parse(isoDate).toLocal();
+      List<String> months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ags", "Sep", "Okt", "Nov", "Des"];
+      return "${date.day} ${months[date.month - 1]} ${date.year}";
+    } catch (e) {
+      return "-";
+    }
   }
 
   void fetchSavedRecommendation() async {

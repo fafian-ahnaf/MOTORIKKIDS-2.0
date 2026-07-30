@@ -225,7 +225,79 @@ class RecommendationView extends GetView<RecommendationController> {
                               );
                             }
                           }),
+
                         // ============================================================
+                        // --- TAMBAHAN REVISI DOSEN: RIWAYAT AKTIVITAS (ORTU) ---
+                        // ============================================================
+                        if (controller.role == 'parent')
+                          Obx(() {
+                            if (controller.assessmentHistory.isEmpty) return const SizedBox();
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const SizedBox(height: 32),
+                                const Divider(thickness: 2, color: Color(0xFFF0F0F0)),
+                                const SizedBox(height: 24),
+                                Text("Riwayat Aktivitas Ananda 📝", 
+                                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: teksGelap)),
+                                const SizedBox(height: 8),
+                                Text("Aktivitas yang telah diobservasi oleh Guru di sekolah.", 
+                                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
+                                const SizedBox(height: 16),
+                                
+                                ListView.separated(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  padding: EdgeInsets.zero,
+                                  itemCount: controller.assessmentHistory.length,
+                                  separatorBuilder: (c, i) => const SizedBox(height: 12),
+                                  itemBuilder: (context, index) {
+                                    var item = controller.assessmentHistory[index];
+                                    bool isHalus = item['type'] == 'Halus';
+                                    Color typeColor = isHalus ? Colors.purple.shade400 : orenJeruk;
+                                    
+                                    return Container(
+                                      padding: const EdgeInsets.all(16),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(color: typeColor.withOpacity(0.3), width: 2),
+                                        boxShadow: [BoxShadow(color: typeColor.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 4))],
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(10),
+                                            decoration: BoxDecoration(color: typeColor.withOpacity(0.15), shape: BoxShape.circle),
+                                            child: Icon(isHalus ? Icons.edit_rounded : Icons.directions_run_rounded, color: typeColor, size: 24),
+                                          ),
+                                          const SizedBox(width: 16),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(item['activity'] ?? "Aktivitas Motorik", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: teksGelap)),
+                                                const SizedBox(height: 4),
+                                                Text("${controller.formatDate(item['date'])} • ${item['notes'] ?? ''}", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey.shade500), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                              ]
+                                            )
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                            decoration: BoxDecoration(color: typeColor, borderRadius: BorderRadius.circular(12)),
+                                            child: Text("${(item['score'] ?? 0).toDouble().toInt()}", style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.white, fontSize: 14))
+                                          ),
+                                        ]
+                                      )
+                                    );
+                                  },
+                                )
+                              ],
+                            );
+                          }),
+                        // ============================================================
+
                       ],
                     ),
                   ),

@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:http/http.dart' as http; 
 
 class StudentDetailController extends GetxController {
   FirebaseFirestore firestore = FirebaseFirestore.instance;
@@ -51,10 +53,8 @@ class StudentDetailController extends GetxController {
         
         List<dynamic> rawHistory = data?['riwayat'] ?? [];
         
-        // Kita ubah list mentah menjadi List baru yang bisa dimodifikasi/di-sort
         List<Map<String, dynamic>> history = rawHistory.map((e) => Map<String, dynamic>.from(e)).toList();
         
-        // Barulah kita urutkan dengan aman (Terbaru di atas)
         history.sort((a, b) => (b['date'] ?? "").compareTo(a['date'] ?? "")); 
         
         assessmentHistory.value = history;
@@ -106,22 +106,65 @@ class StudentDetailController extends GetxController {
     });
   }
 
-  void addAssessment() async {
-    if (activityNameC.text.isNotEmpty && studentId.isNotEmpty) {
-      _saveToFirebase(
-        newLog: {
-          'type': selectedMotorikType.value,
-          'activity': activityNameC.text,
-          'notes': notesC.text,
-          'score': inputScore.value,
-          'date': DateTime.now().toIso8601String(),
-        },
-      );
-    } else {
-       Get.snackbar("Gagal", "Nama Kegiatan wajib diisi", backgroundColor: Colors.orange);
+  // =========================================================================
+  // --- FUNGSI MENGHUBUNGKAN APLIKASI DENGAN AI INDOBERT (REVISI PENGUJI) ---
+  // =========================================================================
+  void prosesAnalisisAI() async {
+    if (activityNameC.text.isEmpty) {
+      Get.snackbar("Gagal", "Silakan isi nama kegiatan terlebih dahulu.", backgroundColor: Colors.orange.shade100);
+      return;
+    }
+
+    try {
+      isLoading.value = true;
+      String teksObservasi = notesC.text.trim(); // Ambil teks dari input guru
+
+      final response = await http.post(
+        Uri.parse("https://motorikkids.my.id/predict"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"teks": teksObservasi}),
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        
+        String statusNLP = data['data']['prediksi_status'] ?? "Belum Dinilai"; 
+        String kategoriNLP = data['data']['prediksi_kategori'] ?? "Tidak Ditemukan"; 
+
+        // --- PROTEKSI DOSEN PENGUJI: KATEGORI TIDAK DITEMUKAN ---
+        if (kategoriNLP == "Tidak Ditemukan") {
+          isLoading.value = false;
+          Get.snackbar(
+            "Gagal Dianalisis 🤔", 
+            "Kalimat tidak mendeskripsikan aktivitas motorik halus atau kasar secara spesifik. Tolong perjelas catatan Anda.",
+            backgroundColor: Colors.orange.shade200,
+            duration: const Duration(seconds: 5),
+          );
+          return; // Hentikan eksekusi, biarkan popup tetap terbuka
+        }
+
+        // --- JIKA BERHASIL: SIMPAN KE FIREBASE MENGGUNAKAN DATA AI ---
+        _saveToFirebase(
+          newLog: {
+            'type': kategoriNLP, // Disimpan otomatis berdasarkan tebakan kategori AI!
+            'activity': activityNameC.text,
+            'notes': teksObservasi,
+            'score': inputScore.value,
+            'status': statusNLP, // Disimpan otomatis berdasarkan tebakan status AI!
+            'date': DateTime.now().toIso8601String(),
+          }
+        );
+
+      } else {
+        throw "Server Error: ${response.statusCode}";
+      }
+    } catch (e) {
+      isLoading.value = false;
+      Get.snackbar("Error", "Gagal memproses data dengan AI: $e", backgroundColor: Colors.red.shade100);
     }
   }
 
+  // --- FUNGSI UPDATE DATA (EDIT) ---
   void updateAssessment(Map<String, dynamic> oldData) async {
     if (activityNameC.text.isNotEmpty) {
       Map<String, dynamic> newData = {
@@ -142,7 +185,7 @@ class StudentDetailController extends GetxController {
         await _recalculateGlobalStatus(docRef);
 
         isLoading.value = false;
-        Get.back(); 
+        Get.back(); // --- PERBAIKAN UX: TUTUP POPUP ---
         _clearForm();
         Get.snackbar("Sukses", "Data berhasil diubah!", backgroundColor: Colors.green, colorText: Colors.white);
       } catch (e) {
@@ -152,9 +195,9 @@ class StudentDetailController extends GetxController {
     }
   }
 
+  // --- FUNGSI INTERNAL UNTUK MENYIMPAN RIWAYAT ---
   void _saveToFirebase({required Map<String, dynamic> newLog}) async {
     try {
-      isLoading.value = true;
       var docRef = firestore.collection('students').doc(studentId);
 
       await docRef.update({
@@ -164,20 +207,20 @@ class StudentDetailController extends GetxController {
       await _recalculateGlobalStatus(docRef);
 
       isLoading.value = false;
-      Get.back();
+      Get.back(); // --- PERBAIKAN UX: TUTUP POPUP ---
       _clearForm();
-      Get.snackbar("Sukses", "Data berhasil disimpan!", backgroundColor: Colors.green, colorText: Colors.white);
+      Get.snackbar("Sukses! 🎉", "Data observasi berhasil disimpan.", backgroundColor: Colors.green.shade400, colorText: Colors.white);
     } catch (e) {
       isLoading.value = false;
-      Get.snackbar("Error", "$e", backgroundColor: Colors.red);
+      Get.snackbar("Error", "Gagal menyimpan ke Firebase: $e", backgroundColor: Colors.red);
     }
   }
   
   Future<void> _recalculateGlobalStatus(DocumentReference docRef) async {
-    String newStatus = "Perlu Latihan";
-    if (inputScore.value >= 85) newStatus = "Sangat Baik";
-    else if (inputScore.value >= 70) newStatus = "Baik";
-    else if (inputScore.value >= 55) newStatus = "Cukup";
+    String newStatus = "Belum Berkembang (BB)";
+    if (inputScore.value >= 76) newStatus = "Berkembang Sangat Baik (BSB)";
+    else if (inputScore.value >= 51) newStatus = "Berkembang Sesuai Harapan (BSH)";
+    else if (inputScore.value >= 26) newStatus = "Mulai Berkembang (MB)";
     
     await docRef.update({'status': newStatus});
   }
@@ -186,13 +229,6 @@ class StudentDetailController extends GetxController {
     activityNameC.clear();
     notesC.clear();
     inputScore.value = 75.0;
-  }
-
-  String getScoreLabel(double value) {
-    if (value >= 85) return "Sangat Baik";
-    if (value >= 70) return "Baik";
-    if (value >= 55) return "Cukup";
-    return "Kurang";
   }
 
   String formatDate(String isoString) {
@@ -210,19 +246,16 @@ class StudentDetailController extends GetxController {
   int hitungUsiaBulan(String ageString) {
     int totalBulan = 40; // Default jika gagal
     try {
-      // Ubah ke huruf kecil semua (contoh: "4 thn 11 bln")
       String str = ageString.toLowerCase();
       int tahun = 0;
       int bulan = 0;
 
-      // Cari angka yang ada di depan kata "tahun" atau "thn"
       RegExp tahunRegex = RegExp(r'(\d+)\s*(tahun|thn)');
       var tahunMatch = tahunRegex.firstMatch(str);
       if (tahunMatch != null) {
         tahun = int.parse(tahunMatch.group(1) ?? '0');
       }
 
-      // Cari angka yang ada di depan kata "bulan" atau "bln"
       RegExp bulanRegex = RegExp(r'(\d+)\s*(bulan|bln)');
       var bulanMatch = bulanRegex.firstMatch(str);
       if (bulanMatch != null) {
@@ -230,38 +263,10 @@ class StudentDetailController extends GetxController {
       }
 
       totalBulan = (tahun * 12) + bulan;
-      
-      // Jika berhasil dihitung, kembalikan total bulannya
       return totalBulan == 0 ? 40 : totalBulan;
     } catch (e) {
       return 40;
     }
-  }
-
-  // =========================================================================
-  // --- FUNGSI ESTAFET KE HALAMAN ANALISIS SDIDTK (NLP) ---
-  // =========================================================================
-  void prosesAnalisisAI() {
-    if (activityNameC.text.isEmpty) {
-      Get.snackbar("Gagal", "Silakan isi nama kegiatan terlebih dahulu.", backgroundColor: Colors.orange.shade100);
-      return;
-    }
-
-    // 1. Dapatkan angka bulannya menggunakan Regex
-    int usiaBulanAnak = hitungUsiaBulan(studentAge.value);
-
-    // 2. Buat teks narasi yang akan dibaca model NLP
-    String teksJurnal = "${studentName.value} melakukan kegiatan ${activityNameC.text}. ${notesC.text}";
-
-    // 3. Estafetkan datanya ke halaman Hasil Analisis!
-    Get.toNamed(
-      '/analysis-result', 
-      arguments: {
-        'teks': teksJurnal,
-        'usia_bulan': usiaBulanAnak, // Tongkat estafet yang akurat!
-        'kategori': selectedMotorikType.value, // "Halus" atau "Kasar"
-      }
-    );
   }
   
   @override
