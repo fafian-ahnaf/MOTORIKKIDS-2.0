@@ -1,53 +1,110 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class ForgotPasswordController extends GetxController {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   final emailC = TextEditingController();
-  RxBool isLoading = false.obs;
-  FirebaseAuth auth = FirebaseAuth.instance;
+  
+  var isLoading = false.obs;
 
-  void resetPassword() async {
-    if (emailC.text.isEmpty || !emailC.text.contains('@')) {
+  void sendPasswordResetEmail() async {
+    String email = emailC.text.trim();
+
+    if (email.isEmpty) {
       Get.snackbar(
-        "Oops!", 
-        "Masukkan alamat email yang valid ya.", 
-        backgroundColor: Colors.orange, 
-        colorText: Colors.white
+        "Eits! ⚠️", 
+        "Alamat email tidak boleh kosong ya Bunda/Yanda.",
+        backgroundColor: Colors.orange.shade100,
+        colorText: Colors.orange.shade900,
+        snackPosition: SnackPosition.TOP,
+      );
+      return;
+    }
+
+    if (!GetUtils.isEmail(email)) {
+      Get.snackbar(
+        "Format Email Kurang Tepat ❌", 
+        "Pastikan penulisan alamat email sudah benar (contoh: nama@email.com).",
+        backgroundColor: Colors.red.shade100,
+        colorText: Colors.red.shade900,
+        snackPosition: SnackPosition.TOP,
       );
       return;
     }
 
     try {
       isLoading.value = true;
-      // Perintah sakti Firebase untuk mengirim email reset password
-      await auth.sendPasswordResetEmail(email: emailC.text.trim());
+      await _auth.sendPasswordResetEmail(email: email);
       isLoading.value = false;
-      
-      Get.defaultDialog(
-        title: "Terkirim! ✉️",
-        middleText: "Coba cek kotak masuk (atau folder spam) di email Anda untuk mengatur ulang kata sandi.",
-        textConfirm: "Siap, Paham!",
-        confirmTextColor: Colors.white,
-        buttonColor: const Color(0xFF4FC3F7), // warna biruAwan
-        onConfirm: () {
-          Get.back(); // Tutup dialog
-          Get.back(); // Kembali ke halaman Login
-        }
-      );
-      
-      emailC.clear();
+
+      // Munculkan dialog sukses yang ramah
+      _showSuccessDialog(email);
+
     } on FirebaseAuthException catch (e) {
       isLoading.value = false;
-      String pesanError = "Terjadi kesalahan.";
+      String pesanError = "Terjadi kesalahan saat mengirim email reset.";
+      
       if (e.code == 'user-not-found') {
-        pesanError = "Email ini belum terdaftar di aplikasi.";
+        pesanError = "Alamat email ini belum terdaftar di sistem MotorikKids.";
+      } else if (e.code == 'invalid-email') {
+        pesanError = "Format email tidak valid.";
       }
-      Get.snackbar("Gagal", pesanError, backgroundColor: Colors.red, colorText: Colors.white);
+
+      Get.snackbar(
+        "Gagal Mengirim 😔", 
+        pesanError,
+        backgroundColor: Colors.red.shade100,
+        colorText: Colors.red.shade900,
+        snackPosition: SnackPosition.TOP,
+        duration: const Duration(seconds: 4),
+      );
     } catch (e) {
       isLoading.value = false;
-      Get.snackbar("Gagal", "Error: $e", backgroundColor: Colors.red, colorText: Colors.white);
+      Get.snackbar("Error", "Gagal mengirim tautan: $e");
     }
+  }
+
+  void _showSuccessDialog(String email) {
+    Get.defaultDialog(
+      title: "Email Terkirim! 💌",
+      titleStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20),
+      content: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12.0),
+        child: Column(
+          children: [
+            const Icon(Icons.mark_email_read_rounded, size: 64, color: Color(0xFF4FC3F7)),
+            const SizedBox(height: 16),
+            Text(
+              "Kami telah mengirimkan tautan pemulihan kata sandi ke:\n\n$email\n\nSilakan cek kotak masuk atau folder spam/junk email Anda ya!",
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 13, height: 1.5, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+      ),
+      radius: 24,
+      barrierDismissible: false,
+      confirm: SizedBox(
+        width: double.infinity,
+        height: 45,
+        child: ElevatedButton(
+          onPressed: () {
+            Get.back(); // Tutup dialog
+            Get.back(); // Kembali ke halaman Login
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF4FC3F7),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            elevation: 0,
+          ),
+          child: const Text(
+            "Siap, Kembali ke Masuk! 👍", 
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900),
+          ),
+        ),
+      ),
+    );
   }
 
   @override

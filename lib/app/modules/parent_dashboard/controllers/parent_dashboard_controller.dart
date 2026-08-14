@@ -13,6 +13,8 @@ class ParentDashboardController extends GetxController {
   var studentData = <String, dynamic>{}.obs;
   var studentId = "".obs;
 
+  // --- PERBAIKAN 1: TAMBAHKAN LIST RIWAYAT AGAR BISA MUNCUL 2 CATATAN ---
+  var assessmentHistory = <Map<String, dynamic>>[].obs;
   var latestObservation = <String, dynamic>{}.obs;
 
   final tokenC = TextEditingController();
@@ -30,15 +32,20 @@ class ParentDashboardController extends GetxController {
       User? user = _auth.currentUser;
       
       if (user != null) {
-        // 1. Ambil nama orang tua dari tabel users
+        // 1. Ambil nama orang tua dari tabel users (dengan multi-fallback)
         var userDoc = await _firestore.collection('users').doc(user.uid).get();
-        if (userDoc.exists) {
-          parentName.value = userDoc.data()?['nama_lengkap'] ?? "Bunda/Ayah";
+        if (userDoc.exists && userDoc.data() != null) {
+          var uData = userDoc.data()!;
+          parentName.value = uData['nama_lengkap'] ?? 
+                             uData['nama'] ?? 
+                             uData['name'] ?? 
+                             user.displayName ?? 
+                             "Bunda/Ayah";
+        } else {
+          parentName.value = user.displayName ?? "Bunda/Ayah";
         }
 
-        // =================================================================
-        // PERBAIKAN: CARI LANGSUNG KE TABEL STUDENTS BERDASARKAN parent_id
-        // =================================================================
+        // 2. Cari langsung ke tabel students berdasarkan parent_id
         var studentQuery = await _firestore.collection('students')
             .where('parent_id', isEqualTo: user.uid)
             .limit(1)
@@ -54,38 +61,65 @@ class ParentDashboardController extends GetxController {
           // Gunakan assignAll agar tampilan layar (UI) langsung ter-refresh
           studentData.assignAll(data); 
 
-          await _fetchLatestObservation(studentDoc.id);
+          // --- PERBAIKAN 2: PANGGIL FUNGSI RIWAYAT LENGKAP ---
+          await _fetchAssessmentHistory(studentDoc.id);
         } else {
           // Jika kosong, pastikan layar menampilkan "Belum Terhubung"
+          studentId.value = "";
           studentData.clear();
+          assessmentHistory.clear();
+          latestObservation.clear();
         }
       }
     } catch (e) {
-      print("Error loading parent dashboard: $e");
+      debugPrint("Error loading parent dashboard: $e");
     } finally {
       isLoading.value = false;
     }
   }
 
-  Future<void> _fetchLatestObservation(String sId) async {
+  // --- PERBAIKAN 3: AMBIL DALAM BENTUK LIST AGAR KASAR & HALUS MUNCUL ---
+  Future<void> _fetchAssessmentHistory(String sId) async {
     try {
-      var subColSnapshot = await _firestore.collection('students')
-          .doc(sId).collection('riwayat').orderBy('date', descending: true).limit(1).get();
+      // A. Coba ambil dari subkoleksi 'riwayat' terlebih dahulu
+      var subColSnapshot = await _firestore
+          .collection('students')
+          .doc(sId)
+          .collection('riwayat')
+          .orderBy('date', descending: true)
+          .get();
 
       if (subColSnapshot.docs.isNotEmpty) {
-        latestObservation.assignAll(subColSnapshot.docs.first.data());
+        var historyList = subColSnapshot.docs.map((doc) {
+          var data = doc.data();
+          data['id'] = doc.id;
+          return data;
+        }).toList();
+
+        assessmentHistory.assignAll(historyList);
+        latestObservation.assignAll(historyList.first);
       } else {
+        // B. Fallback: Jika tersimpan di dalam array field 'riwayat'
         var doc = await _firestore.collection('students').doc(sId).get();
         if (doc.exists && doc.data()?['riwayat'] != null) {
           List<dynamic> historyArray = doc.data()!['riwayat'];
           if (historyArray.isNotEmpty) {
-            historyArray.sort((a, b) => (b['date'] ?? "").compareTo(a['date'] ?? ""));
-            latestObservation.assignAll(Map<String, dynamic>.from(historyArray.first));
+            List<Map<String, dynamic>> historyList = historyArray
+                .map((e) => Map<String, dynamic>.from(e))
+                .toList();
+
+            historyList.sort((a, b) => (b['date'] ?? "").compareTo(a['date'] ?? ""));
+            
+            assessmentHistory.assignAll(historyList);
+            latestObservation.assignAll(historyList.first);
+          } else {
+            assessmentHistory.clear();
+            latestObservation.clear();
           }
         }
       }
     } catch (e) {
-      print("Error fetching latest observation: $e");
+      debugPrint("Error fetching assessment history: $e");
     }
   }
 
@@ -113,7 +147,9 @@ class ParentDashboardController extends GetxController {
       var studentDoc = snapshot.docs.first;
       var dataAnak = studentDoc.data();
 
-      if (dataAnak['parent_id'] != null && dataAnak['parent_id'].toString().isNotEmpty && dataAnak['parent_id'] != user.uid) {
+      if (dataAnak['parent_id'] != null && 
+          dataAnak['parent_id'].toString().isNotEmpty && 
+          dataAnak['parent_id'] != user.uid) {
         Get.snackbar("Gagal", "Token ini sudah digunakan oleh akun orang tua lain.", backgroundColor: Colors.orange.shade100);
         return;
       }

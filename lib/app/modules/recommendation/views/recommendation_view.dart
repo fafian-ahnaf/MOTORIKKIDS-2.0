@@ -138,13 +138,10 @@ class RecommendationView extends GetView<RecommendationController> {
 
                         const SizedBox(height: 32),
                         
-                        // ============================================================
                         // --- WIDGET KHUSUS ORANG TUA: CHECKLIST & FEEDBACK ---
-                        // ============================================================
                         if (controller.role == 'parent')
                           Obx(() {
                             if (controller.isDoneByParent.value) {
-                              // TAMPILAN JIKA SUDAH SELESAI
                               return Container(
                                 width: double.infinity,
                                 padding: const EdgeInsets.all(20),
@@ -175,7 +172,6 @@ class RecommendationView extends GetView<RecommendationController> {
                                 ),
                               );
                             } else {
-                              // TAMPILAN JIKA BELUM SELESAI
                               return Container(
                                 width: double.infinity,
                                 padding: const EdgeInsets.all(20),
@@ -226,9 +222,7 @@ class RecommendationView extends GetView<RecommendationController> {
                             }
                           }),
 
-                        // ============================================================
-                        // --- TAMBAHAN REVISI DOSEN: RIWAYAT AKTIVITAS (ORTU) ---
-                        // ============================================================
+                        // --- RIWAYAT AKTIVITAS (ORTU) ---
                         if (controller.role == 'parent')
                           Obx(() {
                             if (controller.assessmentHistory.isEmpty) return const SizedBox();
@@ -296,13 +290,13 @@ class RecommendationView extends GetView<RecommendationController> {
                               ],
                             );
                           }),
-                        // ============================================================
-
                       ],
                     ),
                   ),
 
-                  // --- TOMBOL SIMPAN MELAYANG (KHUSUS GURU) ---
+                  // ========================================================
+                  // REVISI UX & PENAMAAN: TOMBOL SIMPAN MELAYANG (KHUSUS GURU)
+                  // ========================================================
                   if (controller.role != 'parent')
                     Positioned(
                       left: 24, right: 24, bottom: 24,
@@ -315,7 +309,8 @@ class RecommendationView extends GetView<RecommendationController> {
                           width: double.infinity,
                           height: 65,
                           child: ElevatedButton(
-                            onPressed: () => controller.markAsDone(),
+                            // REVISI: Memanggil fungsi auto-close yang baru (saveRecommendationToParent)
+                            onPressed: () => controller.saveRecommendationToParent(),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.green.shade400,
                               elevation: 0,
@@ -359,6 +354,10 @@ class RecommendationView extends GetView<RecommendationController> {
   }
 
   Widget _buildHeaderCard(Map<String, String> data) {
+    // REVISI KETUA PENGUJI: Mengecek apakah saran ini untuk Motorik Kasar atau Halus
+    final bool isKasar = (data['lokasi'] ?? "").toLowerCase().contains("lapangan") || 
+                         (data['lokasi'] ?? "").toLowerCase().contains("halaman");
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -375,7 +374,26 @@ class RecommendationView extends GetView<RecommendationController> {
             decoration: BoxDecoration(color: biruAwan.withOpacity(0.15), shape: BoxShape.circle),
             child: Icon(Icons.child_care_rounded, color: biruAwan, size: 45), 
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
+
+          // REVISI KETUA PENGUJI: Badge Target Kategori Motorik
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: isKasar ? Colors.orange.shade50 : Colors.purple.shade50,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              isKasar ? "Target: Motorik Kasar" : "Target: Motorik Halus",
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: isKasar ? Colors.orange.shade800 : Colors.purple.shade800,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+
           Text(data['title'] ?? "-", 
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: teksGelap)),

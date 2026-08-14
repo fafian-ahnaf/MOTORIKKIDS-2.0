@@ -14,6 +14,35 @@ class ParentDashboardView extends GetView<ParentDashboardController> {
   final Color orenJeruk = const Color(0xFFFFB74D);
   final Color teksGelap = const Color(0xFF4A4A4A);
 
+  // Penguji status pintar kebal teks panjang & berbagai variasi
+  Map<String, dynamic> _getStatusDetail(String rawKode, [double score = 0]) {
+    String kode = rawKode.toUpperCase().trim();
+
+    if (kode.isEmpty || kode == "-" || kode.contains("BELUM DINILAI")) {
+      if (score >= 76) {
+        kode = "BSB";
+      } else if (score >= 51) {
+        kode = "BSH";
+      } else if (score >= 26) {
+        kode = "MB";
+      } else if (score > 0) {
+        kode = "BB";
+      }
+    }
+
+    if (kode.contains("BSB") || kode.contains("SANGAT") || kode.contains("BAIK")) {
+      return {"label": "Berkembang Sangat Baik (BSB)", "color": Colors.green.shade500};
+    } else if (kode.contains("BSH") || kode.contains("HARAPAN") || kode.contains("SESUAI")) {
+      return {"label": "Berkembang Sesuai Harapan (BSH)", "color": Colors.blue.shade400};
+    } else if (kode.contains("MB") || kode.contains("MULAI")) {
+      return {"label": "Mulai Berkembang (MB)", "color": const Color(0xFFEEDB00)};
+    } else if (kode.contains("BB") || kode.contains("BELUM")) {
+      return {"label": "Belum Berkembang (BB)", "color": Colors.red.shade400};
+    }
+
+    return {"label": "Berkembang Sesuai Harapan (BSH)", "color": Colors.blue.shade400};
+  }
+
   @override
   Widget build(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
@@ -92,7 +121,8 @@ class ParentDashboardView extends GetView<ParentDashboardController> {
                           ],
                         ),
                         const SizedBox(height: 8),
-                        _buildLatestObservationCard(),
+
+                        _buildLatestObservationsList(),
                       ]
                     ],
                   ),
@@ -135,8 +165,17 @@ class ParentDashboardView extends GetView<ParentDashboardController> {
 
   Widget _buildChildHeroCard() {
     var student = controller.studentData;
-    String name = student['name'] ?? "Ananda";
-    String status = student['status'] ?? "Belum Dinilai";
+
+    String name = student['name'] ?? 
+                  student['nama'] ?? 
+                  student['nama_siswa'] ?? 
+                  student['nama_lengkap'] ?? 
+                  "Ananda";
+                  
+    String rawStatus = student['status'] ?? "";
+    final statusInfo = _getStatusDetail(rawStatus);
+    String status = statusInfo["label"];
+    String initial = name.trim().isNotEmpty ? name.trim()[0].toUpperCase() : "A";
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -150,7 +189,7 @@ class ParentDashboardView extends GetView<ParentDashboardController> {
           Container(
             width: 70, height: 70,
             decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-            child: Center(child: Text(name[0].toUpperCase(), style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: pinkCeria))),
+            child: Center(child: Text(initial, style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: pinkCeria))),
           ),
           const SizedBox(width: 20),
           Expanded(
@@ -196,9 +235,10 @@ class ParentDashboardView extends GetView<ParentDashboardController> {
     );
   }
 
-  Widget _buildLatestObservationCard() {
-    var obs = controller.latestObservation;
-    if (obs.isEmpty) {
+  Widget _buildLatestObservationsList() {
+    var history = controller.assessmentHistory;
+    
+    if (history.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), border: Border.all(color: Colors.grey.shade200)),
@@ -206,27 +246,302 @@ class ParentDashboardView extends GetView<ParentDashboardController> {
       );
     }
 
-    String activity = obs['activity'] ?? "Kegiatan";
-    String notes = obs['notes'] ?? "-";
-    String dateStr = obs['date'] != null ? DateFormat('dd MMM yyyy').format(DateTime.parse(obs['date'])) : "-";
+    var latestTwo = history.take(2).toList();
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), border: Border.all(color: biruAwan.withOpacity(0.3), width: 2), boxShadow: [BoxShadow(color: biruAwan.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))]),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: EdgeInsets.zero,
+      itemCount: latestTwo.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 16),
+      itemBuilder: (context, index) {
+        return _buildSingleObservationCard(latestTwo[index]);
+      },
+    );
+  }
+
+  // ===========================================================================
+  // KARTU OBSERVASI TERBARU (BISA DIKLIK MEMUNCULKAN POPUP DETAIL)
+  // ===========================================================================
+  Widget _buildSingleObservationCard(Map<String, dynamic> obs) {
+    String activity = obs['activity'] ?? "Kegiatan Observasi";
+    String notes = obs['notes'] ?? "-";
+    double score = (obs['score'] ?? 0).toDouble();
+    
+    String dateStr = "-";
+    try {
+      if (obs['date'] != null) {
+        dateStr = DateFormat('dd MMM yyyy').format(DateTime.parse(obs['date']));
+      }
+    } catch (_) {
+      dateStr = "-";
+    }
+    
+    String kategori = obs['type'] ?? obs['kategori'] ?? "Motorik Kasar";
+    String statusKode = obs['status'] ?? "";
+    
+    final statusInfo = _getStatusDetail(statusKode, score);
+    final bool isKasar = kategori.toLowerCase().contains("kasar");
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _showDetailObservationDialog(obs), // <-- AKSI KLIK DETAIL
+        borderRadius: BorderRadius.circular(24),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white, 
+            borderRadius: BorderRadius.circular(24), 
+            border: Border.all(color: biruAwan.withOpacity(0.3), width: 2), 
+            boxShadow: [BoxShadow(color: biruAwan.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))]
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(color: biruAwan.withOpacity(0.15), borderRadius: BorderRadius.circular(8)), child: Text(dateStr, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: biruAwan))),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), 
+                    decoration: BoxDecoration(color: biruAwan.withOpacity(0.15), borderRadius: BorderRadius.circular(8)), 
+                    child: Text(dateStr, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: biruAwan)),
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(color: statusInfo["color"], borderRadius: BorderRadius.circular(12)),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          statusInfo["label"],
+                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Chip(
+                    visualDensity: VisualDensity.compact,
+                    backgroundColor: isKasar ? Colors.orange.shade50 : Colors.purple.shade50,
+                    label: Text(
+                      isKasar ? "Motorik Kasar" : "Motorik Halus",
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: isKasar ? Colors.orange.shade900 : Colors.purple.shade900,
+                      ),
+                    ),
+                  ),
+                  // Petunjuk kecil bahwa kartu bisa diklik
+                  Row(
+                    children: [
+                      Text("Lihat Detail", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: biruAwan)),
+                      const SizedBox(width: 4),
+                      Icon(Icons.arrow_forward_ios_rounded, size: 12, color: biruAwan),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+
+              Text(activity, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: teksGelap)),
+              const SizedBox(height: 8),
+              Text('"$notes"', style: TextStyle(fontSize: 13, color: Colors.grey.shade700, height: 1.5, fontStyle: FontStyle.italic), maxLines: 2, overflow: TextOverflow.ellipsis),
+              
+              const Divider(height: 24),
+              Text(
+                isKasar ? "💡 Tips Motorik Kasar:" : "💡 Tips Motorik Halus:",
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: teksGelap),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                isKasar 
+                  ? "Melibatkan gerakan otot besar tubuh. Ajak anak aktif bergerak, berlari, atau bermain bola di luar ruangan agar keseimbangannya makin optimal."
+                  : "Melibatkan ketelitian otot jari dan tangan. Dampingi anak bermain menggambar, menyusun balok, atau melipat kertas di rumah.",
+                style: TextStyle(fontSize: 11, color: Colors.grey.shade600, height: 1.4),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
             ],
           ),
-          const SizedBox(height: 12),
-          Text(activity, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: teksGelap)),
-          const SizedBox(height: 8),
-          Text('"$notes"', style: TextStyle(fontSize: 13, color: Colors.grey.shade700, height: 1.5, fontStyle: FontStyle.italic)),
-        ],
+        ),
+      ),
+    );
+  }
+
+  // ===========================================================================
+  // MODAL DIALOG DETAIL OBSERVASI LENGKAP
+  // ===========================================================================
+  void _showDetailObservationDialog(Map<String, dynamic> obs) {
+    String activity = obs['activity'] ?? "Kegiatan Observasi";
+    String notes = obs['notes'] ?? "-";
+    double score = (obs['score'] ?? 0).toDouble();
+    String teacherName = obs['teacher_name'] ?? obs['nama_guru'] ?? "Guru Kelas";
+    
+    String dateStr = "-";
+    try {
+      if (obs['date'] != null) {
+        dateStr = DateFormat('dd MMMM yyyy').format(DateTime.parse(obs['date']));
+      }
+    } catch (_) {
+      dateStr = "-";
+    }
+
+    String kategori = obs['type'] ?? obs['kategori'] ?? "Motorik Kasar";
+    String statusKode = obs['status'] ?? "";
+    final statusInfo = _getStatusDetail(statusKode, score);
+    final bool isKasar = kategori.toLowerCase().contains("kasar");
+    Color typeColor = isKasar ? orenJeruk : Colors.purple.shade400;
+
+    Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(20),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: typeColor, width: 3),
+            boxShadow: [
+              BoxShadow(color: typeColor.withOpacity(0.2), blurRadius: 15, offset: const Offset(0, 8))
+            ],
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header Ikon & Tanggal
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(color: typeColor.withOpacity(0.15), shape: BoxShape.circle),
+                      child: Icon(isKasar ? Icons.directions_run_rounded : Icons.edit_rounded, color: typeColor, size: 28),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text("Detail Observasi", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: teksGelap)),
+                          Text(dateStr, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey.shade600)),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(color: typeColor, borderRadius: BorderRadius.circular(12)),
+                      child: Text("${score.toInt()} ⭐", style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.white, fontSize: 14)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+
+                // Badge Status Capaian
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: statusInfo["color"],
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Text(
+                    statusInfo["label"],
+                    style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w900, color: Colors.white),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Judul Aktivitas
+                Text("Kegiatan Stimulasi:", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey.shade600)),
+                const SizedBox(height: 4),
+                Text(activity, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: teksGelap)),
+                const SizedBox(height: 14),
+
+                // Narasi Catatan Guru
+                Text("Catatan Anekdot Guru:", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey.shade600)),
+                const SizedBox(height: 6),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(color: bgBase, borderRadius: BorderRadius.circular(16)),
+                  child: Text(
+                    '"$notes"',
+                    style: TextStyle(fontSize: 13.5, color: teksGelap, height: 1.5, fontStyle: FontStyle.italic, fontWeight: FontWeight.w600),
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // Nama Guru Pengamat
+                Row(
+                  children: [
+                    Icon(Icons.person_pin_rounded, size: 18, color: Colors.grey.shade500),
+                    const SizedBox(width: 6),
+                    Text("Guru: $teacherName", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.grey.shade700)),
+                  ],
+                ),
+                const Divider(height: 28),
+
+                // Saran / Tips Stimulasi
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: isKasar ? Colors.orange.shade50 : Colors.purple.shade50,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: isKasar ? Colors.orange.shade200 : Colors.purple.shade200),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isKasar ? "💡 Tips Stimulasi Motorik Kasar:" : "💡 Tips Stimulasi Motorik Halus:",
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: isKasar ? Colors.orange.shade900 : Colors.purple.shade900),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        isKasar
+                            ? "Melibatkan gerakan otot besar tubuh. Ajak anak aktif bergerak, berlari, atau bermain bola di luar ruangan agar keseimbangannya makin optimal."
+                            : "Melibatkan ketelitian otot jari dan tangan. Dampingi anak bermain menggambar, menyusun balok, atau melipat kertas di rumah.",
+                        style: TextStyle(fontSize: 11.5, color: isKasar ? Colors.orange.shade900 : Colors.purple.shade900, height: 1.4),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Tombol Tutup
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: () => Get.back(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: typeColor,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      elevation: 0,
+                    ),
+                    child: const Text("Tutup Detail", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15)),
+                  ),
+                )
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -248,7 +563,6 @@ class ParentDashboardView extends GetView<ParentDashboardController> {
           Text("Silakan masukkan Token Ortu yang diberikan oleh guru untuk melihat perkembangan Ananda.", textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: Colors.grey.shade600, height: 1.5)),
           const SizedBox(height: 20),
           ElevatedButton(
-            // SUDAH DIUBAH: Sekarang memanggil Pop-up Dialog
             onPressed: () => _showTokenDialog(), 
             style: ElevatedButton.styleFrom(backgroundColor: orenJeruk, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))),
             child: const Text("Hubungkan Token", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
@@ -258,7 +572,6 @@ class ParentDashboardView extends GetView<ParentDashboardController> {
     );
   }
 
-  // --- WIDGET POP-UP DIALOG UNTUK TOKEN ---
   void _showTokenDialog() {
     controller.tokenC.clear(); 
     Get.dialog(

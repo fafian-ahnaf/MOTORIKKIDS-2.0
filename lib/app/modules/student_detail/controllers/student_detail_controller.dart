@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
@@ -7,10 +8,12 @@ import 'package:http/http.dart' as http;
 
 class StudentDetailController extends GetxController {
   FirebaseFirestore firestore = FirebaseFirestore.instance;
+  FirebaseAuth auth = FirebaseAuth.instance;
 
   late String studentId;
   var studentName = "".obs;
   var studentAge = "".obs; 
+  String role = 'teacher'; 
   
   final activityNameC = TextEditingController();
   final notesC = TextEditingController();
@@ -20,13 +23,19 @@ class StudentDetailController extends GetxController {
   var inputScore = 75.0.obs; 
   var isLoading = false.obs;
 
+  var inputMode = 'manual'.obs;
+  var aiStatusResult = "".obs;
+  var isAiAnalyzed = false.obs;
+
   var fineMotorScore = 0.0.obs; 
   var grossMotorScore = 0.0.obs; 
   var fineMotorSum = 0.0.obs;   
   var grossMotorSum = 0.0.obs;  
   var currentStatus = "-".obs;
 
-  var assessmentHistory = <Map<String, dynamic>>[].obs;   
+  var activeTeacherName = "Guru Kelas".obs;
+
+  var assessmentHistory = <Map<String, dynamic>>[].obs;     
   var recommendationHistory = <Map<String, dynamic>>[].obs; 
 
   @override
@@ -34,16 +43,55 @@ class StudentDetailController extends GetxController {
     super.onInit();
     final args = Get.arguments;
     if (args != null) {
-      studentId = args['id'] ?? ""; 
+      studentId = args['id'] ?? args['studentId'] ?? ""; 
       studentName.value = args['name'] ?? "";
       studentAge.value = args['age'] ?? "5 Tahun";
       currentStatus.value = args['status'] ?? "-";
+      role = args['role'] ?? 'teacher';
       
       if (studentId.isNotEmpty) {
         monitorStudentData();      
         monitorRecommendations();  
       }
     }
+
+    fetchActiveTeacherName();
+  }
+
+  // ===========================================================================
+  // FILTER ROLE: PASTIKAN YANG MENYIMPAN ADALAH AKUN GURU, BUKAN ORANG TUA
+  // ===========================================================================
+  void fetchActiveTeacherName() async {
+    try {
+      User? user = auth.currentUser;
+      if (user != null) {
+        var doc = await firestore.collection('users').doc(user.uid).get();
+        if (doc.exists && doc.data() != null) {
+          String roleUser = (doc.data()!['role'] ?? '').toString().toLowerCase();
+          bool isParent = roleUser == 'parent' || roleUser == 'ortu' || roleUser == 'orang_tua';
+
+          // Jika yang login BUKAN orang tua, ambil namanya
+          if (!isParent) {
+            String nama = doc.data()!['name'] ?? 
+                          doc.data()!['nama'] ?? 
+                          doc.data()!['nama_lengkap'] ?? 
+                          user.displayName ?? 
+                          "Guru Kelas";
+            if (nama.trim().isNotEmpty) {
+              activeTeacherName.value = nama;
+            }
+          } else {
+            activeTeacherName.value = "Guru Kelas";
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("Gagal ambil nama guru: $e");
+    }
+  }
+
+  String _getCurrentTeacherName() {
+    return activeTeacherName.value;
   }
 
   void monitorStudentData() {
@@ -53,10 +101,29 @@ class StudentDetailController extends GetxController {
         
         List<dynamic> rawHistory = data?['riwayat'] ?? [];
         
-        List<Map<String, dynamic>> history = rawHistory.map((e) => Map<String, dynamic>.from(e)).toList();
+        List<Map<String, dynamic>> history = rawHistory.map((e) {
+          var map = Map<String, dynamic>.from(e);
+          String rawStatus = (map['status'] ?? "").toString().trim();
+          double score = (map['score'] ?? 0).toDouble();
+          
+          if (rawStatus.isEmpty || 
+              rawStatus == "-" || 
+              rawStatus.toLowerCase().contains("belum dinilai")) {
+            map['status'] = _getPAUDScaleLabel(score);
+          } else {
+            map['status'] = _expandStatusName(rawStatus);
+          }
+
+          if (map['teacher_name'] == null || 
+              map['teacher_name'].toString().isEmpty || 
+              map['teacher_name'] == "Guru Kelas") {
+            map['teacher_name'] = _getCurrentTeacherName();
+          }
+
+          return map;
+        }).toList();
         
         history.sort((a, b) => (b['date'] ?? "").compareTo(a['date'] ?? "")); 
-        
         assessmentHistory.value = history;
 
         double totalFine = 0;
@@ -82,7 +149,7 @@ class StudentDetailController extends GetxController {
         grossMotorScore.value = countGross == 0 ? 0.0 : (totalGross / countGross) / 100;
         
         if (data?['status'] != null) {
-          currentStatus.value = data!['status'];
+          currentStatus.value = _expandStatusName(data!['status']);
         }
       }
     }, onError: (e) {
@@ -106,18 +173,19 @@ class StudentDetailController extends GetxController {
     });
   }
 
-  // =========================================================================
-  // --- FUNGSI MENGHUBUNGKAN APLIKASI DENGAN AI INDOBERT (REVISI PENGUJI) ---
-  // =========================================================================
-  void prosesAnalisisAI() async {
+  void hitungNilaiAIOtomatis({bool langsungSimpan = false}) async {
     if (activityNameC.text.isEmpty) {
-      Get.snackbar("Gagal", "Silakan isi nama kegiatan terlebih dahulu.", backgroundColor: Colors.orange.shade100);
+      Get.snackbar("Gagal", "Silakan pilih minimal 1 kegiatan stimulasi.", backgroundColor: Colors.orange.shade100, snackPosition: SnackPosition.TOP);
+      return;
+    }
+    if (notesC.text.trim().isEmpty) {
+      Get.snackbar("Gagal", "Silakan isi deskripsi anekdot terlebih dahulu.", backgroundColor: Colors.orange.shade100, snackPosition: SnackPosition.TOP);
       return;
     }
 
     try {
       isLoading.value = true;
-      String teksObservasi = notesC.text.trim(); // Ambil teks dari input guru
+      String teksObservasi = notesC.text.trim();
 
       final response = await http.post(
         Uri.parse("https://motorikkids.my.id/predict"),
@@ -128,50 +196,140 @@ class StudentDetailController extends GetxController {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         
-        String statusNLP = data['data']['prediksi_status'] ?? "Belum Dinilai"; 
-        String kategoriNLP = data['data']['prediksi_kategori'] ?? "Tidak Ditemukan"; 
+        String rawStatusNLP = data['data']?['prediksi_status'] ?? 
+                              data['data']?['status'] ?? 
+                              data['prediksi_status'] ?? 
+                              data['status'] ?? 
+                              "";
 
-        // --- PROTEKSI DOSEN PENGUJI: KATEGORI TIDAK DITEMUKAN ---
-        if (kategoriNLP == "Tidak Ditemukan") {
+        String kategoriNLP = data['data']?['prediksi_kategori'] ?? 
+                             data['data']?['kategori'] ?? 
+                             selectedMotorikType.value; 
+
+        if (kategoriNLP == "Tidak Ditemukan" || 
+            kategoriNLP == "Kategori Tidak Ditemukan" || 
+            kategoriNLP == "Unknown" || 
+            kategoriNLP.isEmpty) {
           isLoading.value = false;
           Get.snackbar(
-            "Gagal Dianalisis 🤔", 
-            "Kalimat tidak mendeskripsikan aktivitas motorik halus atau kasar secara spesifik. Tolong perjelas catatan Anda.",
-            backgroundColor: Colors.orange.shade200,
-            duration: const Duration(seconds: 5),
+            "Kategori Tidak Ditemukan ⚠️", 
+            "Kalimat tidak mendeskripsikan aktivitas motorik secara spesifik. Tolong perjelas catatan observasi Anda.",
+            backgroundColor: Colors.orange.shade100,
+            colorText: Colors.orange.shade900,
+            snackPosition: SnackPosition.TOP,
+            duration: const Duration(seconds: 4),
           );
-          return; // Hentikan eksekusi, biarkan popup tetap terbuka
+          return;
         }
 
-        // --- JIKA BERHASIL: SIMPAN KE FIREBASE MENGGUNAKAN DATA AI ---
-        _saveToFirebase(
-          newLog: {
-            'type': kategoriNLP, // Disimpan otomatis berdasarkan tebakan kategori AI!
-            'activity': activityNameC.text,
-            'notes': teksObservasi,
-            'score': inputScore.value,
-            'status': statusNLP, // Disimpan otomatis berdasarkan tebakan status AI!
-            'date': DateTime.now().toIso8601String(),
-          }
-        );
+        String statusNLP = (rawStatusNLP.isEmpty || rawStatusNLP.toLowerCase().contains("belum dinilai"))
+            ? _getPAUDScaleLabel(inputScore.value)
+            : rawStatusNLP;
+
+        String fullStatus = _expandStatusName(statusNLP);
+        double skorOtomatis = _konversiStatusKeSkor(fullStatus);
+        
+        inputScore.value = skorOtomatis;
+        aiStatusResult.value = fullStatus;
+        isAiAnalyzed.value = true;
+        isLoading.value = false;
+
+        if (langsungSimpan) {
+          _saveToFirebase(
+            newLog: {
+              'type': selectedMotorikType.value,
+              'activity': activityNameC.text,
+              'notes': teksObservasi,
+              'score': skorOtomatis,
+              'status': fullStatus,
+              'teacher_name': _getCurrentTeacherName(),
+              'date': DateTime.now().toIso8601String(),
+            }
+          );
+        } else {
+          Get.snackbar(
+            "Nilai Observasi Berhasil Muncul! ✨", 
+            "Sistem menilai capaian Ananda: $fullStatus ($skorOtomatis poin).", 
+            backgroundColor: Colors.green.shade600,
+            colorText: Colors.white,
+            snackPosition: SnackPosition.TOP,
+          );
+        }
 
       } else {
         throw "Server Error: ${response.statusCode}";
       }
     } catch (e) {
       isLoading.value = false;
-      Get.snackbar("Error", "Gagal memproses data dengan AI: $e", backgroundColor: Colors.red.shade100);
+      Get.snackbar("Error", "Gagal memproses data dengan AI: $e", backgroundColor: Colors.red.shade100, snackPosition: SnackPosition.TOP);
     }
   }
 
-  // --- FUNGSI UPDATE DATA (EDIT) ---
+  String _expandStatusName(String rawStatus) {
+    String s = rawStatus.toUpperCase();
+    if (s.contains("BSB") || s.contains("SANGAT") || s.contains("BAIK")) {
+      return "Berkembang Sangat Baik (BSB)";
+    }
+    if (s.contains("BSH") || s.contains("HARAPAN") || s.contains("SESUAI")) {
+      return "Berkembang Sesuai Harapan (BSH)";
+    }
+    if (s.contains("MB") || s.contains("MULAI")) {
+      return "Mulai Berkembang (MB)";
+    }
+    if (s.contains("BB") || s.contains("BELUM") || s.contains("PENDAMPINGAN")) {
+      return "Belum Berkembang (BB)";
+    }
+    return rawStatus;
+  }
+
+  double _konversiStatusKeSkor(String status) {
+    String s = status.toUpperCase();
+    if (s.contains("BSB") || s.contains("SANGAT")) return 88.0;
+    if (s.contains("BSH") || s.contains("HARAPAN")) return 68.0;
+    if (s.contains("MB") || s.contains("MULAI")) return 40.0;
+    return 18.0;
+  }
+
+  void simpanObservasiBaru() {
+    if (activityNameC.text.isEmpty) {
+      Get.snackbar("Gagal", "Silakan pilih minimal 1 kegiatan stimulasi.", backgroundColor: Colors.orange.shade100, snackPosition: SnackPosition.TOP);
+      return;
+    }
+    if (notesC.text.trim().isEmpty) {
+      Get.snackbar("Gagal", "Silakan lengkapi deskripsi observasi terlebih dahulu.", backgroundColor: Colors.orange.shade100, snackPosition: SnackPosition.TOP);
+      return;
+    }
+
+    String status = aiStatusResult.value.isNotEmpty 
+        ? aiStatusResult.value 
+        : _getPAUDScaleLabel(inputScore.value);
+
+    _saveToFirebase(
+      newLog: {
+        'type': selectedMotorikType.value,
+        'activity': activityNameC.text,
+        'notes': notesC.text.trim(),
+        'score': inputScore.value,
+        'status': _expandStatusName(status),
+        'teacher_name': _getCurrentTeacherName(),
+        'date': DateTime.now().toIso8601String(),
+      }
+    );
+  }
+
   void updateAssessment(Map<String, dynamic> oldData) async {
     if (activityNameC.text.isNotEmpty) {
+      String status = aiStatusResult.value.isNotEmpty 
+          ? aiStatusResult.value 
+          : _getPAUDScaleLabel(inputScore.value);
+
       Map<String, dynamic> newData = {
         'type': selectedMotorikType.value,
         'activity': activityNameC.text,
         'notes': notesC.text,
         'score': inputScore.value,
+        'status': _expandStatusName(status),
+        'teacher_name': oldData['teacher_name'] ?? _getCurrentTeacherName(),
         'date': oldData['date'], 
       };
 
@@ -185,17 +343,59 @@ class StudentDetailController extends GetxController {
         await _recalculateGlobalStatus(docRef);
 
         isLoading.value = false;
-        Get.back(); // --- PERBAIKAN UX: TUTUP POPUP ---
+
+        if (Get.isDialogOpen ?? false) {
+          Get.back();
+        }
         _clearForm();
-        Get.snackbar("Sukses", "Data berhasil diubah!", backgroundColor: Colors.green, colorText: Colors.white);
+
+        Get.snackbar(
+          "Sukses! 🎉", 
+          "Data observasi berhasil diperbarui.", 
+          backgroundColor: Colors.green.shade600, 
+          colorText: Colors.white,
+          snackPosition: SnackPosition.TOP,
+          duration: const Duration(seconds: 2),
+        );
+
       } catch (e) {
         isLoading.value = false;
-        Get.snackbar("Error", "Gagal update: $e", backgroundColor: Colors.red);
+        Get.snackbar("Error", "Gagal update: $e", backgroundColor: Colors.red.shade100, snackPosition: SnackPosition.TOP);
       }
     }
   }
 
-  // --- FUNGSI INTERNAL UNTUK MENYIMPAN RIWAYAT ---
+  void deleteAssessment(Map<String, dynamic> itemToDelete) async {
+    try {
+      isLoading.value = true;
+      var docRef = firestore.collection('students').doc(studentId);
+
+      await docRef.update({
+        'riwayat': FieldValue.arrayRemove([itemToDelete])
+      });
+
+      await _recalculateGlobalStatus(docRef);
+
+      isLoading.value = false;
+      Get.snackbar(
+        "Berhasil Dihapus! 🗑️", 
+        "Catatan observasi Ananda berhasil dihapus.", 
+        backgroundColor: Colors.green.shade600, 
+        colorText: Colors.white,
+        snackPosition: SnackPosition.TOP,
+        duration: const Duration(seconds: 2),
+      );
+    } catch (e) {
+      isLoading.value = false;
+      Get.snackbar(
+        "Error", 
+        "Gagal menghapus catatan: $e", 
+        backgroundColor: Colors.red.shade100, 
+        snackPosition: SnackPosition.TOP,
+      );
+    }
+  }
+
   void _saveToFirebase({required Map<String, dynamic> newLog}) async {
     try {
       var docRef = firestore.collection('students').doc(studentId);
@@ -207,12 +407,24 @@ class StudentDetailController extends GetxController {
       await _recalculateGlobalStatus(docRef);
 
       isLoading.value = false;
-      Get.back(); // --- PERBAIKAN UX: TUTUP POPUP ---
+
+      if (Get.isDialogOpen ?? false) {
+        Get.back();
+      }
       _clearForm();
-      Get.snackbar("Sukses! 🎉", "Data observasi berhasil disimpan.", backgroundColor: Colors.green.shade400, colorText: Colors.white);
+
+      Get.snackbar(
+        "Sukses! 🎉", 
+        "Data observasi berhasil disimpan ke sistem.", 
+        backgroundColor: Colors.green.shade600, 
+        colorText: Colors.white,
+        snackPosition: SnackPosition.TOP,
+        duration: const Duration(seconds: 2),
+      );
+
     } catch (e) {
       isLoading.value = false;
-      Get.snackbar("Error", "Gagal menyimpan ke Firebase: $e", backgroundColor: Colors.red);
+      Get.snackbar("Error", "Gagal menyimpan ke Firebase: $e", backgroundColor: Colors.red.shade100, snackPosition: SnackPosition.TOP);
     }
   }
   
@@ -229,6 +441,16 @@ class StudentDetailController extends GetxController {
     activityNameC.clear();
     notesC.clear();
     inputScore.value = 75.0;
+    inputMode.value = 'manual';
+    aiStatusResult.value = "";
+    isAiAnalyzed.value = false;
+  }
+
+  String _getPAUDScaleLabel(double score) {
+    if (score >= 76) return "Berkembang Sangat Baik (BSB)";
+    if (score >= 51) return "Berkembang Sesuai Harapan (BSH)";
+    if (score >= 26) return "Mulai Berkembang (MB)";
+    return "Belum Berkembang (BB)";
   }
 
   String formatDate(String isoString) {
@@ -240,11 +462,8 @@ class StudentDetailController extends GetxController {
     }
   }
 
-  // =========================================================================
-  // --- FUNGSI MENGUBAH TEKS JADI ANGKA BULAN (VERSI LEBIH PINTAR / REGEX) ---
-  // =========================================================================
   int hitungUsiaBulan(String ageString) {
-    int totalBulan = 40; // Default jika gagal
+    int totalBulan = 40; 
     try {
       String str = ageString.toLowerCase();
       int tahun = 0;

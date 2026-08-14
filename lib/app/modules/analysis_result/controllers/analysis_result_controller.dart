@@ -4,7 +4,6 @@ import 'package:motorikkids/app/modules/recommendation/views/recommendation_view
 import 'package:motorikkids/app/services/nlp_service.dart';
 
 class AnalysisResultController extends GetxController {
-  
   var isLoading = true.obs; 
 
   // --- VARIABEL OBSERVASI ---
@@ -29,11 +28,19 @@ class AnalysisResultController extends GetxController {
     String teksObservasi = args['teks'] ?? "Anak sudah mulai bisa melompat walau belum stabil.";
     inputTeks.value = teksObservasi;
     
-    // Tangkap usia dan kategori yang dikirim dari form observasi
     usiaBulan.value = args['usia_bulan'] ?? 40; 
-    kategoriMotorik.value = args['kategori'] ?? "Motorik Kasar";
+    
+    // REVISI: Standardisasi kategori agar tidak terjadi error "Kategori tidak ditemukan"
+    String rawKategori = (args['kategori'] ?? "Motorik Kasar").toString().toUpperCase();
+    if (rawKategori.contains("KASAR")) {
+      kategoriMotorik.value = "KASAR";
+    } else if (rawKategori.contains("HALUS")) {
+      kategoriMotorik.value = "HALUS";
+    } else {
+      kategoriMotorik.value = "KASAR"; // Default aman
+    }
 
-    // Langsung tembak ke NLP Flask Anda
+    // Langsung tembak ke NLP Flask (IndoBERT)
     fetchPredictionFromFlask(teksObservasi);
   }
 
@@ -47,13 +54,12 @@ class AnalysisResultController extends GetxController {
       // Memanggil fungsi dari nlp_service.dart
       final data = await NlpService.analisisMotorik(teks);
 
-      if (data != null) {
+      if (data != null && data['prediksi_status'] != null) {
         status.value = data['prediksi_status']; 
         tingkatKeyakinan.value = (data['tingkat_keyakinan'] ?? 0.0).toDouble();
 
         // Jalankan rekomendasi murni dari buku KIA/SDIDTK
         _setRecommendationBakuSDIDTK(usiaBulan.value, kategoriMotorik.value, status.value);
-        
       } else {
         _setFallbackData("Gagal mendapat respon dari server NLP. Pastikan API MotorikKids berjalan.");
       }
@@ -80,7 +86,7 @@ class AnalysisResultController extends GetxController {
     // RENTANG: 0 - 12 BULAN (Masa Bayi)
     // =========================================================
     if (umurBulan >= 0 && umurBulan <= 12) {
-      if (kategori == "Kasar" || kategori == "Motorik Kasar") {
+      if (kategori == "KASAR") {
         if (prediksi == "BB") {
           recommendationData.value = {
             "title": "Intervensi Gerak Dasar",
@@ -147,7 +153,7 @@ class AnalysisResultController extends GetxController {
     // RENTANG: 13 - 24 BULAN (Batita Awal / 1-2 Tahun)
     // =========================================================
     else if (umurBulan > 12 && umurBulan <= 24) {
-      if (kategori == "Kasar" || kategori == "Motorik Kasar") {
+      if (kategori == "KASAR") {
         if (prediksi == "BB") {
           recommendationData.value = {
             "title": "Intervensi Berjalan & Keseimbangan",
@@ -213,8 +219,8 @@ class AnalysisResultController extends GetxController {
     // =========================================================
     // RENTANG: 25 - 35 BULAN (Batita Akhir / 2-3 Tahun)
     // =========================================================
-    else if (umurBulan > 24 && umurBulan < 36) {
-      if (kategori == "Kasar" || kategori == "Motorik Kasar") {
+    else if (umurBulan > 24 && umurBulan <= 35) {
+      if (kategori == "KASAR") {
         if (prediksi == "BB") {
           recommendationData.value = {
             "title": "Intervensi Naik Tangga & Lompat",
@@ -281,7 +287,7 @@ class AnalysisResultController extends GetxController {
     // RENTANG: 36 - 48 BULAN (3-4 Tahun)
     // =========================================================
     else if (umurBulan >= 36 && umurBulan <= 48) {
-      if (kategori == "Kasar" || kategori == "Motorik Kasar") {
+      if (kategori == "KASAR") {
         if (prediksi == "BB") {
           recommendationData.value = {
             "title": "Intervensi Intensif 2 Minggu",
@@ -345,10 +351,10 @@ class AnalysisResultController extends GetxController {
       }
     }
     // =========================================================
-    // RENTANG: 49 - 59 BULAN (4 Tahun)
+    // RENTANG: 49 - 59 BULAN (4-5 Tahun)
     // =========================================================
     else if (umurBulan > 48 && umurBulan <= 59) {
-      if (kategori == "Kasar" || kategori == "Motorik Kasar") {
+      if (kategori == "KASAR") {
         if (prediksi == "BB") {
           recommendationData.value = {
             "title": "Intervensi Keseimbangan",
@@ -379,7 +385,7 @@ class AnalysisResultController extends GetxController {
           };
         }
       } else { 
-        // Motorik Halus 4 Tahun
+        // Motorik Halus 49-59 Bulan
         if (prediksi == "BB") {
           recommendationData.value = {
             "title": "Intervensi Motorik Halus",
@@ -412,10 +418,10 @@ class AnalysisResultController extends GetxController {
       }
     }
     // =========================================================
-    // RENTANG: 60 - 72 BULAN (5 - 6 Tahun)
+    // RENTANG: 60 - 72 BULAN (5 - 6 Tahun / Usia Maksimal TK)
     // =========================================================
     else if (umurBulan >= 60 && umurBulan <= 72) {
-      if (kategori == "Kasar" || kategori == "Motorik Kasar") {
+      if (kategori == "KASAR") {
         if (prediksi == "BB") {
           recommendationData.value = {
             "title": "Intervensi Keseimbangan Tingkat Lanjut",
@@ -446,7 +452,7 @@ class AnalysisResultController extends GetxController {
           };
         }
       } else { 
-        // Motorik Halus 5 - 6 Tahun
+        // Motorik Halus 60-72 Bulan
         if (prediksi == "BB") {
           recommendationData.value = {
             "title": "Intervensi Motorik Halus Lanjut",
@@ -512,13 +518,20 @@ class AnalysisResultController extends GetxController {
     Get.to(() => const RecommendationView());
   }
 
+  // REVISI UX: Otomatis menutup halaman evaluasi & form observasi
   void saveAndFinish() {
-    Get.back(); 
+    // Menutup 2 halaman sekaligus (Halaman Hasil & Halaman Form Observasi)
+    // Agar langsung kembali ke daftar anak / dasbor guru.
+    Get.close(2); 
+    
     Get.snackbar(
-      "Berhasil", 
-      "Analisa $status disave ke database.", 
-      backgroundColor: Colors.green, 
+      "Berhasil Disimpan", 
+      "Analisis motorik ($status) telah diperbarui ke dalam sistem.", 
+      backgroundColor: Colors.green.shade600, 
       colorText: Colors.white,
+      snackPosition: SnackPosition.BOTTOM,
+      margin: const EdgeInsets.all(12),
+      duration: const Duration(seconds: 3),
     );
   }
 }

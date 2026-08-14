@@ -5,7 +5,7 @@ import 'package:get/get.dart';
 import 'package:http/http.dart' as http; 
 
 class RecommendationController extends GetxController {
-  FirebaseFirestore firestore = FirebaseFirestore.instance;
+  final FirebaseFirestore firestore = FirebaseFirestore.instance;
   
   var recommendationData = <String, String>{}.obs;
   var isLoading = true.obs;
@@ -25,7 +25,7 @@ class RecommendationController extends GetxController {
   var parentFeedbackText = "".obs;
   final feedbackC = TextEditingController(); 
 
-  // --- TAMBAHAN REVISI: VARIABEL RIWAYAT UNTUK ORANG TUA ---
+  // --- VARIABEL RIWAYAT UNTUK ORANG TUA ---
   var assessmentHistory = <Map<String, dynamic>>[].obs;
 
   @override
@@ -34,14 +34,14 @@ class RecommendationController extends GetxController {
     final args = Get.arguments ?? {};
     
     _currentAge = args['age'] ?? "5 Tahun";
-    _currentFineScore = args['fineScore'] ?? 0.0;
-    _currentGrossScore = args['grossScore'] ?? 0.0;
+    _currentFineScore = (args['fineScore'] ?? 0.0).toDouble();
+    _currentGrossScore = (args['grossScore'] ?? 0.0).toDouble();
     studentId = args['studentId']; 
     role = args['role'] ?? ''; 
 
     if (role == 'parent') {
       fetchSavedRecommendation();
-      fetchAssessmentHistory(); // <-- Memanggil riwayat aktivitas untuk Orang Tua
+      fetchAssessmentHistory(); 
     } else {
       getNewRecommendation(); 
     }
@@ -49,7 +49,7 @@ class RecommendationController extends GetxController {
 
   // --- MENGUBAH TEKS UMUR JADI BULAN (REGEX) ---
   int _hitungUsiaBulanPintar(String ageString) {
-    int totalBulan = 40; 
+    int totalBulan = 48; // Default aman usia TK (4 tahun)
     try {
       String str = ageString.toLowerCase();
       int tahun = 0;
@@ -64,9 +64,9 @@ class RecommendationController extends GetxController {
       if (bulanMatch != null) bulan = int.parse(bulanMatch.group(1) ?? '0');
 
       totalBulan = (tahun * 12) + bulan;
-      return totalBulan == 0 ? 40 : totalBulan;
+      return totalBulan == 0 ? 48 : totalBulan;
     } catch (e) {
-      return 40;
+      return 48;
     }
   }
 
@@ -82,7 +82,7 @@ class RecommendationController extends GetxController {
     
     try {
       String teksObservasi = _generateObservationText(_currentFineScore, _currentGrossScore);
-      final String apiUrl = "https://motorikkids.my.id/predict";
+      const String apiUrl = "https://motorikkids.my.id/predict";
       
       final response = await http.post(
         Uri.parse(apiUrl),
@@ -92,23 +92,30 @@ class RecommendationController extends GetxController {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        String statusNLP = data['data']['prediksi_status'] ?? "BSH"; 
+        String statusNLP = data['data']?['prediksi_status'] ?? "BSH"; 
         
         recommendationData.value = _generateDynamicRecommendation(statusNLP);
-        
       } else {
         throw "Server Error: ${response.statusCode}";
       }
     } catch (e) {
+      // Fallback jika API gangguan agar UI tidak kosong
+      recommendationData.value = _generateDynamicRecommendation("BSH");
       Future.delayed(const Duration(milliseconds: 500), () {
-        Get.snackbar("Kendala Koneksi", "Gagal terhubung ke API IndoBERT: $e", 
-          backgroundColor: Colors.red.shade100);
+        Get.snackbar(
+          "Kendala Koneksi AI", 
+          "Menggunakan rekomendasi standar KIA/SDIDTK. ($e)", 
+          backgroundColor: Colors.orange.shade100,
+        );
       });
     } finally {
       isLoading.value = false;
     }
   }
 
+  // =================================================================
+  // PERBAIKAN 1: STRUKTUR UMUR SDIDTK YANG LEBIH LENGKAP (3 - 6 TAHUN)
+  // =================================================================
   Map<String, String> _generateDynamicRecommendation(String status) {
     int umurBulan = _hitungUsiaBulanPintar(_currentAge);
     String kategoriTerlemah = _currentFineScore <= _currentGrossScore ? "Halus" : "Kasar";
@@ -120,6 +127,7 @@ class RecommendationController extends GetxController {
     String durasi = "";
     String lokasi = kategoriTerlemah == "Kasar" ? "Halaman Rumah / Lapangan" : "Ruang Kelas / Meja Belajar";
 
+    // --- USIA 5 - 6 TAHUN (60 - 72 BULAN) ---
     if (umurBulan >= 60 && umurBulan <= 72) {
       if (kategoriTerlemah == "Kasar") {
         if (status == "BB" || status == "MB") {
@@ -127,7 +135,7 @@ class RecommendationController extends GetxController {
           desc = "Kemampuan gerak Ananda perlu dorongan agar setara dengan teman seusianya.";
           tujuan = "Mengejar ketertinggalan motorik kasar 5 tahun.";
           cara = "Latih anak berdiri 1 kaki selama 11 detik. Ajari melompat jauh dan bermain halang rintang ringan secara rutin.";
-          durasi = "20 Menit";
+          durasi = "20 Menit / Hari";
         } else {
           title = "Si Paling Tangkas! ⚽";
           desc = "Sangat optimal! Ananda sudah siap menerima tantangan fisik yang lebih kompleks.";
@@ -141,7 +149,7 @@ class RecommendationController extends GetxController {
           desc = "Kesiapan menulis Ananda masih perlu dilatih agar tidak kesulitan di SD nanti.";
           tujuan = "Meningkatkan kemampuan menulis dasar dan presisi.";
           cara = "Latih anak menggambar orang lengkap (6 bagian tubuh) dan menulis beberapa angka serta huruf.";
-          durasi = "15 Menit";
+          durasi = "15 Menit / Hari";
         } else {
           title = "Penulis Hebat Masa Depan 🌟";
           desc = "Perkembangan motorik halus Ananda sangat mengesankan dan presisi.";
@@ -151,6 +159,7 @@ class RecommendationController extends GetxController {
         }
       }
     } 
+    // --- USIA 4 - 5 TAHUN (49 - 59 BULAN) ---
     else if (umurBulan > 48 && umurBulan < 60) {
       if (kategoriTerlemah == "Kasar") {
         if (status == "BB" || status == "MB") {
@@ -158,7 +167,7 @@ class RecommendationController extends GetxController {
           desc = "Tungkai Ananda butuh latihan ekstra untuk keseimbangan tubuhnya.";
           tujuan = "Meningkatkan kekuatan dan koordinasi tumpuan kaki.";
           cara = "Latih anak berdiri 1 kaki bergantian dan lompat jauh dengan kedua kaki bersamaan melewati garis batas.";
-          durasi = "15-20 Menit";
+          durasi = "15-20 Menit / Hari";
         } else {
           title = "Penjelajah Kecil 🚀";
           desc = "Kelincahan Ananda sangat baik! Mari kita pertahankan perkembangannya.";
@@ -172,7 +181,7 @@ class RecommendationController extends GetxController {
           desc = "Koordinasi mata dan tangan Ananda butuh pembiasaan lebih lanjut.";
           tujuan = "Mengejar ketertinggalan keluwesan jari.";
           cara = "Beri anak kertas & krayon. Latih anak menggambar garis silang (+) dan menumpuk 8 buah kubus.";
-          durasi = "15 Menit";
+          durasi = "15 Menit / Hari";
         } else {
           title = "Seniman Cilik Kreatif ✨";
           desc = "Luar biasa, Ananda mampu mengontrol alat tulis dengan cukup baik di usianya.";
@@ -182,6 +191,7 @@ class RecommendationController extends GetxController {
         }
       }
     } 
+    // --- USIA 3 - 4 TAHUN (36 - 48 BULAN & BAWAHNYA) ---
     else {
       if (kategoriTerlemah == "Kasar") {
         if (status == "BB" || status == "MB") {
@@ -189,7 +199,7 @@ class RecommendationController extends GetxController {
           desc = "Ananda perlu distimulasi lebih aktif agar percaya diri saat bergerak.";
           tujuan = "Mengejar ketertinggalan gerak kasar balita.";
           cara = "Ajak anak bermain 'lampu hijau-merah' untuk melatih keseimbangan, dan latih melompat sejauh mungkin tanpa jatuh.";
-          durasi = "15 Menit";
+          durasi = "15 Menit / Hari";
         } else {
           title = "Lincah & Berani! 🌪️";
           desc = "Kemampuan gerak Ananda berkembang sesuai harapan.";
@@ -203,7 +213,7 @@ class RecommendationController extends GetxController {
           desc = "Ananda butuh pengenalan lebih sering dengan benda-benda manipulatif.";
           tujuan = "Mengembangkan keluwesan genggaman.";
           cara = "Latih menggambar garis lurus atau lingkaran berulang kali, serta bermain puzzle gambar sederhana (3-4 potong).";
-          durasi = "15 Menit";
+          durasi = "15 Menit / Hari";
         } else {
           title = "Cerdas Terampil 💡";
           desc = "Sangat baik! Jemari Ananda sudah cukup kuat untuk mulai belajar menulis kelak.";
@@ -224,7 +234,7 @@ class RecommendationController extends GetxController {
     };
   }
 
-  // --- TAMBAHAN REVISI: FUNGSI TARIK DATA RIWAYAT ---
+  // --- TARIK DATA RIWAYAT ---
   void fetchAssessmentHistory() async {
     if (studentId == null) return;
     try {
@@ -233,7 +243,7 @@ class RecommendationController extends GetxController {
           .doc(studentId)
           .collection('riwayat')
           .orderBy('date', descending: true)
-          .limit(5) // Ambil 5 riwayat terakhir agar tidak terlalu panjang
+          .limit(5)
           .get();
 
       assessmentHistory.assignAll(
@@ -248,7 +258,6 @@ class RecommendationController extends GetxController {
     }
   }
 
-  // Format tanggal agar lebih rapi saat dibaca Orang Tua
   String formatDate(String? isoDate) {
     if (isoDate == null || isoDate.isEmpty) return "-";
     try {
@@ -307,7 +316,10 @@ class RecommendationController extends GetxController {
     isLoading.value = false;
   }
 
-  void markAsDone() async {
+  // =================================================================
+  // PERBAIKAN 2: REVISI UX & PENAMAAN FUNGSI SIMPAN SARAN GURU
+  // =================================================================
+  void saveRecommendationToParent() async {
     if (studentId != null && recommendationData.isNotEmpty) {
       try {
         await firestore
@@ -321,20 +333,21 @@ class RecommendationController extends GetxController {
           'parent_feedback': '', 
         });
 
-        Get.back();
-        Future.delayed(const Duration(milliseconds: 500), () {
+        // REVISI UX: Tutup 2 layar sekaligus agar kembali ke Dasbor/Daftar Siswa
+        Get.close(2);
+        
+        Future.delayed(const Duration(milliseconds: 300), () {
           Get.snackbar(
             "Hebat! 🎉", 
             "Saran aktivitas berhasil disimpan dan dikirim ke Orang Tua!", 
-            backgroundColor: Colors.green.shade400, 
+            backgroundColor: Colors.green.shade600, 
             colorText: Colors.white,
-            snackPosition: SnackPosition.TOP
+            snackPosition: SnackPosition.BOTTOM,
+            margin: const EdgeInsets.all(12),
           ); 
         });
       } catch (e) {
-        Future.delayed(const Duration(milliseconds: 500), () {
-          Get.snackbar("Gagal", "Yaaah, gagal menyimpan data: $e");
-        });
+        Get.snackbar("Gagal", "Yaaah, gagal menyimpan data: $e");
       }
     } else {
       Get.back(); 
@@ -362,7 +375,7 @@ class RecommendationController extends GetxController {
         Get.snackbar(
           "Terima Kasih! 🎉", 
           "Aktivitas telah ditandai selesai. Guru akan melihat catatan Anda.", 
-          backgroundColor: Colors.green.shade500, 
+          backgroundColor: Colors.green.shade600, 
           colorText: Colors.white,
           snackPosition: SnackPosition.TOP,
           duration: const Duration(seconds: 4),
